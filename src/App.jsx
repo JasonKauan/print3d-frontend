@@ -9,6 +9,8 @@ import Impressoes from './pages/Impressoes'
 import Catalogo from './pages/Catalogo'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
+import EsqueceuSenha from './pages/EsqueceuSenha'
+import ResetarSenha from './pages/ResetarSenha'
 
 function RotaProtegida({ children }) {
   const { token } = useAuthStore()
@@ -49,6 +51,9 @@ export default function App() {
       } />
 
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
+      <Route path="/resetar-senha/:token" element={<ResetarSenha />} />
     </Routes>
   )
 }

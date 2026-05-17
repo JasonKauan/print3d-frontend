@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import useAuthStore from '../store/useAuthStore'
 
 export default function Login() {
@@ -10,8 +10,8 @@ export default function Login() {
   const navigate              = useNavigate()
   const location              = useLocation()
 
-  // Mensagem de sucesso vinda do /setup
-  const mensagemSetup = location.state?.mensagem
+  // Mensagem de sucesso vinda do /setup ou /resetar-senha
+  const mensagemSucesso = location.state?.mensagem
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -36,9 +36,9 @@ export default function Login() {
           <p className="text-gray-500 text-sm mt-1">Sistema de gestão</p>
         </div>
 
-        {mensagemSetup && (
+        {mensagemSucesso && (
           <div className="mb-4 px-4 py-3 bg-green-900/30 border border-success rounded-xl text-success text-sm text-center">
-            {mensagemSetup}
+            {mensagemSucesso}
           </div>
         )}
 
@@ -49,7 +49,7 @@ export default function Login() {
               <input
                 type="email"
                 className="input"
-                placeholder="admin@print3d.com"
+                placeholder="seu@email.com"
                 value={form.email}
                 onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
                 required
@@ -72,16 +72,27 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-2.5 mt-2 disabled:opacity-50"
+              className="btn-primary w-full py-2.5 disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
+
+            <div className="text-center">
+              <Link
+                to="/esqueceu-senha"
+                className="text-xs text-gray-500 hover:text-accent transition-colors"
+              >
+                Esqueceu sua senha?
+              </Link>
+            </div>
           </form>
         </div>
 
         <p className="text-center text-xs text-gray-600 mt-4">
           Primeiro acesso?{' '}
-          <a href="/setup" className="text-accent hover:underline">Configurar sistema</a>
+          <Link to="/setup" className="text-accent hover:underline">
+            Configurar sistema
+          </Link>
         </p>
       </div>
     </div>
