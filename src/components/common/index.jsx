@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-// Notificação temporária que aparece no canto inferior direito
 export function Toast({ message, type = 'success', onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000)
@@ -15,8 +14,7 @@ export function Toast({ message, type = 'success', onClose }) {
   }
 
   return (
-    <div className={`fixed bottom-5 right-5 z-50 bg-bg3 border rounded-xl px-4 py-3 text-sm
-                     shadow-lg animate-fade-in ${colors[type]}`}>
+    <div className={`fixed bottom-5 right-5 z-50 bg-bg3 border rounded-xl px-4 py-3 text-sm shadow-lg ${colors[type]}`}>
       {message}
     </div>
   )
@@ -24,7 +22,6 @@ export function Toast({ message, type = 'success', onClose }) {
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 export function Modal({ title, onClose, children }) {
-  // Fecha ao pressionar Escape
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
@@ -42,6 +39,31 @@ export function Modal({ title, onClose, children }) {
           <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
         </div>
         <div className="p-5">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── ModalConfirm ──────────────────────────────────────────────────────────────
+export function ModalConfirm({ titulo, mensagem, onConfirmar, onCancelar }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancelar() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onCancelar])
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancelar() }}
+    >
+      <div className="bg-bg2 border border-border rounded-2xl w-full max-w-sm p-6">
+        <h3 className="font-semibold text-base mb-2">{titulo}</h3>
+        <p className="text-gray-400 text-sm mb-6">{mensagem}</p>
+        <div className="flex gap-3 justify-end">
+          <button className="btn-ghost px-4 py-2" onClick={onCancelar}>Cancelar</button>
+          <button className="btn btn-danger px-4 py-2" onClick={onConfirmar}>Confirmar</button>
+        </div>
       </div>
     </div>
   )

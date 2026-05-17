@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, Spinner, Empty, FormGroup, Toast } from '../components/common'
+import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { membroService } from '../services/membroService'
 import { fmtData } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
@@ -8,59 +8,29 @@ const FORM_INICIAL = { nome: '', email: '', senha: '', role: 'MEMBRO', status: '
 
 export default function Membros() {
   const { data: membros, loading, refetch } = useFetch(() => membroService.listar())
-  const [modal, setModal]   = useState(false)
-  const [editando, setEdit] = useState(null)
-  const [form, setForm]     = useState(FORM_INICIAL)
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast]   = useState(null)
+  const [modal, setModal]       = useState(false)
+  const [confirmar, setConfirmar] = useState(null)
+  const [editando, setEdit]     = useState(null)
+  const [form, setForm]         = useState(FORM_INICIAL)
+  const [saving, setSaving]     = useState(false)
+  const [toast, setToast]       = useState(null)
 
-  const abrirCriar = () => {
-    setEdit(null)
-    setForm(FORM_INICIAL)
-    setModal(true)
-  }
-
+  const abrirCriar = () => { setEdit(null); setForm(FORM_INICIAL); setModal(true) }
   const abrirEditar = (m) => {
     setEdit(m)
-    // Garante que todos os campos são preenchidos corretamente
-    setForm({
-      nome:        m.nome        || '',
-      email:       m.email       || '',
-      senha:       '',
-      role:        m.role        || 'MEMBRO',
-      status:      m.status      || 'ATIVO',
-      dataEntrada: m.dataEntrada || '',
-      dataSaida:   m.dataSaida   || '',
-    })
+    setForm({ nome: m.nome || '', email: m.email || '', senha: '', role: m.role || 'MEMBRO',
+      status: m.status || 'ATIVO', dataEntrada: m.dataEntrada || '', dataSaida: m.dataSaida || '' })
     setModal(true)
   }
 
   const salvar = async () => {
-    if (!form.nome || form.nome.trim() === '') {
-      setToast({ msg: 'Nome é obrigatório.', type: 'error' })
-      return
-    }
-    if (!editando && (!form.senha || form.senha.length < 6)) {
-      setToast({ msg: 'Senha deve ter no mínimo 6 caracteres.', type: 'error' })
-      return
-    }
-
+    if (!form.nome || form.nome.trim() === '') { setToast({ msg: 'Nome é obrigatório.', type: 'error' }); return }
+    if (!editando && (!form.senha || form.senha.length < 6)) { setToast({ msg: 'Senha deve ter no mínimo 6 caracteres.', type: 'error' }); return }
     setSaving(true)
     try {
-      // Monta o payload — na edição remove senha se estiver vazia
-      const payload = {
-        nome:        form.nome.trim(),
-        email:       form.email,
-        role:        form.role,
-        status:      form.status,
-        dataEntrada: form.dataEntrada || null,
-        dataSaida:   form.dataSaida   || null,
-      }
-      // Só inclui senha se foi preenchida
-      if (form.senha && form.senha.trim() !== '') {
-        payload.senha = form.senha
-      }
-
+      const payload = { nome: form.nome.trim(), email: form.email, role: form.role, status: form.status,
+        dataEntrada: form.dataEntrada || null, dataSaida: form.dataSaida || null }
+      if (form.senha && form.senha.trim() !== '') payload.senha = form.senha
       if (editando) {
         await membroService.atualizar(editando.id, payload)
         setToast({ msg: 'Membro atualizado!', type: 'success' })
@@ -69,24 +39,20 @@ export default function Membros() {
         await membroService.criar(payload)
         setToast({ msg: 'Membro cadastrado!', type: 'success' })
       }
-      setModal(false)
-      refetch()
+      setModal(false); refetch()
     } catch (e) {
       setToast({ msg: e.response?.data?.message || 'Erro ao salvar.', type: 'error' })
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
-  const deletar = async (id) => {
-    if (!confirm('Remover membro?')) return
+  const confirmarDeletar = async () => {
     try {
-      await membroService.deletar(id)
+      await membroService.deletar(confirmar.id)
       setToast({ msg: 'Membro removido.', type: 'info' })
       refetch()
     } catch (e) {
       setToast({ msg: e.response?.data?.message || 'Erro ao remover.', type: 'error' })
-    }
+    } finally { setConfirmar(null) }
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -112,9 +78,7 @@ export default function Membros() {
               </tr>
             </thead>
             <tbody>
-              {membros?.length === 0 && (
-                <tr><td colSpan={5}><Empty /></td></tr>
-              )}
+              {membros?.length === 0 && <tr><td colSpan={5}><Empty /></td></tr>}
               {membros?.map(m => (
                 <tr key={m.id}>
                   <td className="td font-medium">{m.nome}</td>
@@ -128,7 +92,7 @@ export default function Membros() {
                   <td className="td">
                     <div className="flex gap-2">
                       <button className="btn-ghost text-xs px-2 py-1" onClick={() => abrirEditar(m)}>Editar</button>
-                      <button className="btn-danger" onClick={() => deletar(m.id)}>✕</button>
+                      <button className="btn-danger" onClick={() => setConfirmar({ id: m.id, nome: m.nome })}>✕</button>
                     </div>
                   </td>
                 </tr>
@@ -141,31 +105,14 @@ export default function Membros() {
       {modal && (
         <Modal title={editando ? 'Editar membro' : 'Novo membro'} onClose={() => setModal(false)}>
           <FormGroup label="Nome *">
-            <input
-              className="input"
-              value={form.nome}
-              onChange={e => set('nome', e.target.value)}
-              placeholder="Nome completo"
-            />
+            <input className="input" value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome completo" />
           </FormGroup>
           <FormGroup label="Email">
-            <input
-              className="input"
-              type="email"
-              value={form.email}
-              onChange={e => set('email', e.target.value)}
-              placeholder="email@exemplo.com"
-            />
+            <input className="input" type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@exemplo.com" />
           </FormGroup>
           <FormGroup label={editando ? 'Nova senha (deixe vazio para manter)' : 'Senha *'}>
-            <input
-              className="input"
-              type="password"
-              value={form.senha}
-              onChange={e => set('senha', e.target.value)}
-              placeholder={editando ? 'Deixe vazio para manter a atual' : 'Mínimo 6 caracteres'}
-              required={!editando}
-            />
+            <input className="input" type="password" value={form.senha} onChange={e => set('senha', e.target.value)}
+              placeholder={editando ? 'Deixe vazio para manter a atual' : 'Mínimo 6 caracteres'} required={!editando} />
           </FormGroup>
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="Role">
@@ -193,6 +140,15 @@ export default function Membros() {
             {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar membro'}
           </button>
         </Modal>
+      )}
+
+      {confirmar && (
+        <ModalConfirm
+          titulo="Remover membro"
+          mensagem={`Tem certeza que deseja remover "${confirmar.nome}"? Esta ação não pode ser desfeita.`}
+          onConfirmar={confirmarDeletar}
+          onCancelar={() => setConfirmar(null)}
+        />
       )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

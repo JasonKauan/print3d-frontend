@@ -14,7 +14,6 @@ export default function Perfil() {
   const [toast, setToast]         = useState(null)
   const fotoRef                   = useRef()
 
-  // Carrega dados atuais do membro (incluindo fotoUrl) do backend
   useEffect(() => {
     api.get('/membros/me').then(r => setPerfil(r.data)).catch(() => {})
   }, [])
@@ -69,7 +68,6 @@ export default function Perfil() {
         api.get('/vendas'),
         api.get('/vendas/resumo'),
       ])
-      // resumo pode ser objeto (membro) ou array (admin) — pega o primeiro se array
       const resumo = Array.isArray(resumoRes.data) ? resumoRes.data[0] : resumoRes.data
       gerarExtratoMembro(perfil || usuario, vendasRes.data, resumo)
     } catch {
@@ -87,14 +85,22 @@ export default function Perfil() {
       {/* Foto de perfil */}
       <div className="card mb-4 flex items-center gap-5">
         <div className="relative shrink-0">
-          <div className="w-20 h-20 rounded-full bg-bg3 border-2 border-border overflow-hidden flex items-center justify-center">
+          {/* Container circular com position relative para o absolute inset-0 funcionar */}
+          <div className="w-20 h-20 rounded-full bg-bg3 border-2 border-border relative overflow-hidden flex items-center justify-center">
             {perfil?.fotoUrl
-              ? <img src={perfil.fotoUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ? <img
+                  src={perfil.fotoUrl}
+                  alt="Foto de perfil"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
               : <span className="text-3xl text-gray-600">
                   {usuario?.nome?.charAt(0)?.toUpperCase() || '?'}
                 </span>
             }
           </div>
+
+          {/* Spinner de upload sobre o avatar */}
           {uploading && (
             <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -112,7 +118,6 @@ export default function Perfil() {
           >
             {uploading ? 'Enviando...' : perfil?.fotoUrl ? 'Trocar foto' : 'Adicionar foto'}
           </button>
-          {/* capture="environment" abre câmera traseira no celular */}
           <input
             ref={fotoRef}
             type="file"

@@ -50,9 +50,13 @@ export default function Catalogo() {
 
   const deletar = async (id) => {
     if (!confirm('Remover produto do catálogo?')) return
-    try { await produtoService.deletar(id); refetch()
+    try {
+      await produtoService.deletar(id)
+      refetch()
       setToast({ msg: 'Produto removido.', type: 'info' })
-    } catch { setToast({ msg: 'Erro ao remover.', type: 'error' }) }
+    } catch {
+      setToast({ msg: 'Erro ao remover.', type: 'error' })
+    }
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -65,33 +69,45 @@ export default function Catalogo() {
       </div>
       <p className="text-gray-500 text-sm mb-5">Todos os produtos com estoque e valor</p>
 
-      {loading ? <Spinner /> : produtos?.length === 0 ? <Empty text="Nenhum produto no catálogo ainda" /> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {produtos?.map(p => (
-            <div key={p.id} className="card p-0 overflow-hidden hover:border-accent transition-colors">
-              {/* Foto */}
-              <div className="h-40 bg-bg3 flex items-center justify-center text-gray-600 text-sm">
-                {p.fotoUrl
-                  ? <img src={p.fotoUrl} alt={p.nome} className="w-full h-full object-cover" />
-                  : 'sem foto'}
-              </div>
-              {/* Info */}
-              <div className="p-4">
-                <p className="font-semibold mb-1">{p.nome}</p>
-                <p className="text-gray-500 text-xs mb-3 line-clamp-2">{p.descricao || ''}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-accent font-mono text-sm">{fmtMoeda(p.preco)}</span>
-                  <span className="text-gray-500 text-xs">{p.estoque} em estoque</span>
+      {loading ? <Spinner /> : produtos?.length === 0
+        ? <Empty text="Nenhum produto no catálogo ainda" />
+        : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {produtos?.map(p => (
+              <div key={p.id} className="card p-0 overflow-hidden hover:border-accent transition-colors">
+
+                {/* Foto — container com altura fixa e position relative */}
+                <div className="h-40 bg-bg3 relative overflow-hidden">
+                  {p.fotoUrl
+                    ? <img
+                        src={p.fotoUrl}
+                        alt={p.nome}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    : <div className="flex items-center justify-center h-full text-gray-600 text-sm">
+                        sem foto
+                      </div>
+                  }
                 </div>
-                <div className="border-t border-border mt-3 pt-3 flex gap-2">
-                  <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(p)}>Editar</button>
-                  <button className="btn-danger" onClick={() => deletar(p.id)}>✕</button>
+
+                {/* Info */}
+                <div className="p-4">
+                  <p className="font-semibold mb-1">{p.nome}</p>
+                  <p className="text-gray-500 text-xs mb-3 line-clamp-2">{p.descricao || ''}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-accent font-mono text-sm">{fmtMoeda(p.preco)}</span>
+                    <span className="text-gray-500 text-xs">{p.estoque} em estoque</span>
+                  </div>
+                  <div className="border-t border-border mt-3 pt-3 flex gap-2">
+                    <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(p)}>Editar</button>
+                    <button className="btn-danger" onClick={() => deletar(p.id)}>✕</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
       {modal && (
         <Modal title={editando ? 'Editar produto' : 'Novo produto'} onClose={() => setModal(false)}>
@@ -116,15 +132,19 @@ export default function Catalogo() {
             >
               📷 Clique para tirar foto ou escolher arquivo
             </div>
-            {/* capture="environment" abre câmera traseira no celular */}
             <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto} />
-            {preview && <img src={preview} className="w-full h-40 object-cover rounded-lg mt-3" alt="preview" />}
+            {preview && (
+              <div className="relative h-40 mt-3 rounded-lg overflow-hidden">
+                <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+              </div>
+            )}
           </FormGroup>
           <button className="btn-primary w-full mt-1" onClick={salvar} disabled={saving}>
             {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Adicionar ao catálogo'}
           </button>
         </Modal>
       )}
+
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
