@@ -6,7 +6,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-export default api
 
 // Interceptor de REQUEST — injeta o token JWT em toda requisição automaticamente
 // Assim não precisamos passar o token manualmente em cada chamada
