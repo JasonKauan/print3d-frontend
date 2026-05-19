@@ -20,8 +20,13 @@ export default function Login() {
     try {
       await login(form.email, form.senha)
       navigate('/')
-    } catch {
-      setError('Email ou senha incorretos.')
+    } catch (e) {
+      const msg = e.response?.data?.message || e.response?.data || ''
+      if (typeof msg === 'string' && msg.toLowerCase().includes('inativ')) {
+        setError('Sua conta está inativa. Entre em contato com o administrador.')
+      } else {
+        setError('Email ou senha incorretos.')
+      }
     } finally {
       setLoading(false)
     }

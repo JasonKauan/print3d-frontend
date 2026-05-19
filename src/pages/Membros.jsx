@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { membroService } from '../services/membroService'
 import { fmtData } from '../utils/formatters'
+import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
 
 const FORM_INICIAL = { nome: '', email: '', senha: '', role: 'MEMBRO', status: 'ATIVO', dataEntrada: '', dataSaida: '' }
 
 export default function Membros() {
+  const { usuario } = useAuthStore()
   const { data: membros, loading, refetch } = useFetch(() => membroService.listar())
   const [modal, setModal]         = useState(false)
   const [confirmar, setConfirmar] = useState(null)
@@ -134,6 +136,7 @@ export default function Membros() {
               <select className="input" value={form.role} onChange={e => set('role', e.target.value)}>
                 <option value="MEMBRO">Membro</option>
                 <option value="ADMIN">Admin</option>
+                {usuario?.role === 'DEV' && <option value="DEV">Dev</option>}
               </select>
             </FormGroup>
             <FormGroup label="Status">

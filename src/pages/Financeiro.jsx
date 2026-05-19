@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, Spinner, Empty, FormGroup, Toast, StatCard } from '../components/common'
 import { vendaService } from '../services/vendaService'
 import { membroService } from '../services/membroService'
+import { produtoService } from '../services/produtoService'
 import { fmtData, fmtMoeda } from '../utils/formatters'
 import { gerarRelatorioGeral, gerarExtratoMembro } from '../utils/gerarPdf'
 import useAuthStore from '../store/useAuthStore'
@@ -16,6 +17,7 @@ export default function Financeiro() {
   const { data: vendas,  loading: lV, refetch: rV } = useFetch(() => vendaService.listar())
   const { data: resumo,  loading: lR, refetch: rR } = useFetch(() => vendaService.resumoGeral())
   const { data: membros }                            = useFetch(() => membroService.listar('ATIVO'))
+  const { data: produtos }                          = useFetch(() => produtoService.listar())
   const [modal, setModal]     = useState(false)
   const [form, setForm]       = useState(FORM)
   const [saving, setSaving]   = useState(false)
@@ -189,7 +191,18 @@ export default function Financeiro() {
             </select>
           </FormGroup>
           <FormGroup label="Produto *">
-            <input className="input" value={form.produtoNome} onChange={e => set('produtoNome', e.target.value)} placeholder="Produto vendido" />
+            <select
+              className="input"
+              value={form.produtoNome}
+              onChange={e => set('produtoNome', e.target.value)}
+            >
+              <option value="">Selecione um produto...</option>
+              {produtos?.map(p => (
+                <option key={p.id} value={p.nome}>
+                  {p.nome} — {fmtMoeda(p.preco)}
+                </option>
+              ))}
+            </select>
           </FormGroup>
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="Quantidade">
