@@ -1,10 +1,20 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import useAuthStore from '../../store/useAuthStore'
+import api from '../../services/api'
 
 export default function Layout({ children }) {
   const { usuario, logout } = useAuthStore()
   const navigate = useNavigate()
   const isAdmin = usuario?.role === 'ADMIN'
+  const [fotoUrl, setFotoUrl] = useState(null)
+
+  // Carrega a foto do usuário logado
+  useEffect(() => {
+    api.get('/membros/me')
+      .then(r => setFotoUrl(r.data.fotoUrl))
+      .catch(() => {})
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -12,11 +22,11 @@ export default function Layout({ children }) {
   }
 
   const navItems = [
-    { to: '/',           label: 'Dashboard'              },
+    { to: '/',           label: 'Dashboard'               },
     { to: '/membros',    label: 'Membros', adminOnly: true },
-    { to: '/impressoes', label: 'Impressões'              },
-    { to: '/catalogo',   label: 'Catálogo'                },
-    { to: '/financeiro', label: 'Financeiro'              },
+    { to: '/impressoes', label: 'Impressões'               },
+    { to: '/catalogo',   label: 'Catálogo'                 },
+    { to: '/financeiro', label: 'Financeiro'               },
   ]
 
   return (
@@ -44,11 +54,25 @@ export default function Layout({ children }) {
               </NavLink>
             ))}
 
+          {/* Avatar + nome + sair */}
           <div className="ml-auto flex items-center gap-3 shrink-0">
-            <a href="/perfil" className="text-xs text-gray-500 hover:text-white hidden sm:block transition-colors"> {usuario?.nome}</a>
+            <NavLink to="/perfil" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              {/* Avatar circular */}
+              <div className="w-7 h-7 rounded-full bg-bg3 border border-border overflow-hidden relative flex items-center justify-center shrink-0">
+                {fotoUrl
+                  ? <img src={fotoUrl} alt="avatar" className="absolute inset-0 w-full h-full object-cover" />
+                  : <span className="text-xs text-gray-500 font-medium">
+                      {usuario?.nome?.charAt(0)?.toUpperCase() || '?'}
+                    </span>
+                }
+              </div>
+              <span className="text-xs text-gray-400 hidden sm:block">{usuario?.nome}</span>
+            </NavLink>
+
             {isAdmin && (
               <span className="badge-blue text-xs hidden sm:block">admin</span>
             )}
+
             <button
               onClick={handleLogout}
               className="text-xs text-gray-500 hover:text-danger transition-colors"

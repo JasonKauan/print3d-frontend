@@ -8,12 +8,12 @@ const FORM_INICIAL = { nome: '', email: '', senha: '', role: 'MEMBRO', status: '
 
 export default function Membros() {
   const { data: membros, loading, refetch } = useFetch(() => membroService.listar())
-  const [modal, setModal]       = useState(false)
+  const [modal, setModal]         = useState(false)
   const [confirmar, setConfirmar] = useState(null)
-  const [editando, setEdit]     = useState(null)
-  const [form, setForm]         = useState(FORM_INICIAL)
-  const [saving, setSaving]     = useState(false)
-  const [toast, setToast]       = useState(null)
+  const [editando, setEdit]       = useState(null)
+  const [form, setForm]           = useState(FORM_INICIAL)
+  const [saving, setSaving]       = useState(false)
+  const [toast, setToast]         = useState(null)
 
   const abrirCriar = () => { setEdit(null); setForm(FORM_INICIAL); setModal(true) }
   const abrirEditar = (m) => {
@@ -70,7 +70,7 @@ export default function Membros() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="th">Nome</th>
+                <th className="th">Membro</th>
                 <th className="th hidden sm:table-cell">Email</th>
                 <th className="th">Status</th>
                 <th className="th hidden md:table-cell">Entrada</th>
@@ -81,7 +81,22 @@ export default function Membros() {
               {membros?.length === 0 && <tr><td colSpan={5}><Empty /></td></tr>}
               {membros?.map(m => (
                 <tr key={m.id}>
-                  <td className="td font-medium">{m.nome}</td>
+                  {/* Nome + foto */}
+                  <td className="td">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-bg3 border border-border relative overflow-hidden flex items-center justify-center shrink-0">
+                        {m.fotoUrl
+                          ? <img src={m.fotoUrl} alt={m.nome}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none' }} />
+                          : <span className="text-xs text-gray-500 font-medium">
+                              {m.nome?.charAt(0)?.toUpperCase() || '?'}
+                            </span>
+                        }
+                      </div>
+                      <span className="font-medium">{m.nome}</span>
+                    </div>
+                  </td>
                   <td className="td text-gray-400 hidden sm:table-cell">{m.email || '—'}</td>
                   <td className="td">
                     <span className={m.status === 'ATIVO' ? 'badge-green' : 'badge-red'}>
