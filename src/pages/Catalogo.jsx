@@ -58,8 +58,8 @@ export default function Catalogo() {
       await produtoService.deletar(confirmar.id)
       setToast({ msg: 'Produto removido.', type: 'info' })
       refetch()
-    } catch {
-      setToast({ msg: 'Erro ao remover.', type: 'error' })
+    } catch (e) {
+      setToast({ msg: e.response?.data?.message || 'Erro ao remover.', type: 'error' })
     } finally { setConfirmar(null) }
   }
 
