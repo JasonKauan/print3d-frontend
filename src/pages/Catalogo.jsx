@@ -151,11 +151,10 @@ export default function Catalogo() {
 
       {confirmar && (
         <ModalConfirm
-          title="Remover produto"
-          message={`Deseja remover "${confirmar.nome}" do catálogo?`}
-          onConfirm={confirmarDeletar}
-          onCancel={() => setConfirmar(null)}
-          isDangerous
+          titulo="Remover produto"
+          mensagem={`Deseja remover "${confirmar.nome}" do catálogo?`}
+          onConfirmar={confirmarDeletar}
+          onCancelar={() => setConfirmar(null)}
         />
       )}
 
