@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Modal, Spinner, Empty, FormGroup, Toast } from '../components/common'
+import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { produtoService } from '../services/produtoService'
 import { fmtMoeda } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
@@ -9,6 +9,7 @@ const FORM = { nome: '', descricao: '', preco: '', estoque: '', foto: null }
 export default function Catalogo() {
   const { data: produtos, loading, refetch } = useFetch(() => produtoService.listar())
   const [modal, setModal]     = useState(false)
+  const [confirmar, setConfirmar] = useState(null)
   const [editando, setEdit]   = useState(null)
   const [form, setForm]       = useState(FORM)
   const [preview, setPreview] = useState(null)
@@ -48,15 +49,18 @@ export default function Catalogo() {
     } finally { setSaving(false) }
   }
 
-  const deletar = async (id) => {
-    if (!confirm('Remover produto do catálogo?')) return
+  const deletar = (produto) => {
+    setConfirmar({ id: produto.id, nome: produto.nome })
+  }
+
+  const confirmarDeletar = async () => {
     try {
-      await produtoService.deletar(id)
-      refetch()
+      await produtoService.deletar(confirmar.id)
       setToast({ msg: 'Produto removido.', type: 'info' })
+      refetch()
     } catch {
       setToast({ msg: 'Erro ao remover.', type: 'error' })
-    }
+    } finally { setConfirmar(null) }
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -101,7 +105,7 @@ export default function Catalogo() {
                   </div>
                   <div className="border-t border-border mt-3 pt-3 flex gap-2">
                     <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(p)}>Editar</button>
-                    <button className="btn-danger" onClick={() => deletar(p.id)}>✕</button>
+                    <button className="btn-danger" onClick={() => deletar(p)}>✕</button>
                   </div>
                 </div>
               </div>
@@ -143,6 +147,16 @@ export default function Catalogo() {
             {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Adicionar ao catálogo'}
           </button>
         </Modal>
+      )}
+
+      {confirmar && (
+        <ModalConfirm
+          title="Remover produto"
+          message={`Deseja remover "${confirmar.nome}" do catálogo?`}
+          onConfirm={confirmarDeletar}
+          onCancel={() => setConfirmar(null)}
+          isDangerous
+        />
       )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
