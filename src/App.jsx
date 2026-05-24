@@ -6,6 +6,7 @@ import Setup from './pages/Setup'
 import Dashboard from './pages/Dashboard'
 import Membros from './pages/Membros'
 import Impressoes from './pages/Impressoes'
+import Impressoras from './pages/Impressoras'
 import Catalogo from './pages/Catalogo'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
@@ -39,6 +40,9 @@ export default function App() {
       } />
       <Route path="/impressoes" element={
         <RotaProtegida><Impressoes /></RotaProtegida>
+      } />
+      <Route path="/impressoras" element={
+        <RotaAdmin><Impressoras /></RotaAdmin>
       } />
       <Route path="/catalogo" element={
         <RotaProtegida><Catalogo /></RotaProtegida>
