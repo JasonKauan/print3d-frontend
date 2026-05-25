@@ -3,6 +3,8 @@ import useAuthStore from './store/useAuthStore'
 import Layout from './components/Layout/Layout'
 import Login from './pages/Login'
 import Setup from './pages/Setup'
+import EsqueceuSenha from './pages/EsqueceuSenha'
+import ResetarSenha from './pages/ResetarSenha'
 import Dashboard from './pages/Dashboard'
 import Membros from './pages/Membros'
 import Impressoes from './pages/Impressoes'
@@ -10,8 +12,6 @@ import Impressoras from './pages/Impressoras'
 import Catalogo from './pages/Catalogo'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
-import EsqueceuSenha from './pages/EsqueceuSenha'
-import ResetarSenha from './pages/ResetarSenha'
 
 function RotaProtegida({ children }) {
   const { token } = useAuthStore()
@@ -22,27 +22,28 @@ function RotaProtegida({ children }) {
 function RotaAdmin({ children }) {
   const { token, usuario } = useAuthStore()
   if (!token) return <Navigate to="/login" replace />
-  if (usuario?.role !== 'ADMIN') return <Navigate to="/" replace />
+  if (usuario?.role !== 'ADMIN' && usuario?.role !== 'DEV') return <Navigate to="/" replace />
   return <Layout>{children}</Layout>
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/setup" element={<Setup />} />
+      {/* Rotas públicas */}
+      <Route path="/login"         element={<Login />} />
+      <Route path="/setup"         element={<Setup />} />
+      <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
+      <Route path="/resetar-senha"  element={<ResetarSenha />} />
 
+      {/* Rotas protegidas — qualquer autenticado */}
       <Route path="/" element={
         <RotaProtegida><Dashboard /></RotaProtegida>
-      } />
-      <Route path="/membros" element={
-        <RotaAdmin><Membros /></RotaAdmin>
       } />
       <Route path="/impressoes" element={
         <RotaProtegida><Impressoes /></RotaProtegida>
       } />
       <Route path="/impressoras" element={
-        <RotaAdmin><Impressoras /></RotaAdmin>
+        <RotaProtegida><Impressoras /></RotaProtegida>
       } />
       <Route path="/catalogo" element={
         <RotaProtegida><Catalogo /></RotaProtegida>
@@ -54,10 +55,12 @@ export default function App() {
         <RotaProtegida><Perfil /></RotaProtegida>
       } />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Rotas só para ADMIN e DEV */}
+      <Route path="/membros" element={
+        <RotaAdmin><Membros /></RotaAdmin>
+      } />
 
-      <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
-      <Route path="/resetar-senha/:token" element={<ResetarSenha />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

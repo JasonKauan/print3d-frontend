@@ -6,10 +6,9 @@ import api from '../../services/api'
 export default function Layout({ children }) {
   const { usuario, logout } = useAuthStore()
   const navigate = useNavigate()
-  const isAdmin = usuario?.role === 'ADMIN'
+  const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
   const [fotoUrl, setFotoUrl] = useState(null)
 
-  // Carrega a foto do usuário logado
   useEffect(() => {
     api.get('/membros/me')
       .then(r => setFotoUrl(r.data.fotoUrl))
@@ -22,11 +21,12 @@ export default function Layout({ children }) {
   }
 
   const navItems = [
-    { to: '/',           label: 'Dashboard'               },
-    { to: '/membros',    label: 'Membros', adminOnly: true },
-    { to: '/impressoes', label: 'Impressões'               },
-    { to: '/catalogo',   label: 'Catálogo'                 },
-    { to: '/financeiro', label: 'Financeiro'               },
+    { to: '/',            label: 'Dashboard'                  },
+    { to: '/membros',     label: 'Membros',   adminOnly: true },
+    { to: '/impressoras', label: 'Impressoras'                },
+    { to: '/impressoes',  label: 'Impressões'                 },
+    { to: '/catalogo',    label: 'Catálogo'                   },
+    { to: '/financeiro',  label: 'Financeiro'                 },
   ]
 
   return (
@@ -54,10 +54,8 @@ export default function Layout({ children }) {
               </NavLink>
             ))}
 
-          {/* Avatar + nome + sair */}
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <NavLink to="/perfil" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              {/* Avatar circular */}
               <div className="w-7 h-7 rounded-full bg-bg3 border border-border overflow-hidden relative flex items-center justify-center shrink-0">
                 {fotoUrl
                   ? <img src={fotoUrl} alt="avatar" className="absolute inset-0 w-full h-full object-cover" />
@@ -70,7 +68,9 @@ export default function Layout({ children }) {
             </NavLink>
 
             {isAdmin && (
-              <span className="badge-blue text-xs hidden sm:block">admin</span>
+              <span className="badge-blue text-xs hidden sm:block">
+                {usuario?.role?.toLowerCase()}
+              </span>
             )}
 
             <button
