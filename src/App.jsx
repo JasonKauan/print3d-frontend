@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Membros from './pages/Membros'
 import Impressoes from './pages/Impressoes'
 import Impressoras from './pages/Impressoras'
+import Filamentos from './pages/Filamentos'
 import Catalogo from './pages/Catalogo'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
@@ -29,36 +30,20 @@ function RotaAdmin({ children }) {
 export default function App() {
   return (
     <Routes>
-      {/* Rotas públicas */}
-      <Route path="/login"         element={<Login />} />
-      <Route path="/setup"         element={<Setup />} />
+      <Route path="/login"          element={<Login />} />
+      <Route path="/setup"          element={<Setup />} />
       <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
       <Route path="/resetar-senha"  element={<ResetarSenha />} />
 
-      {/* Rotas protegidas — qualquer autenticado */}
-      <Route path="/" element={
-        <RotaProtegida><Dashboard /></RotaProtegida>
-      } />
-      <Route path="/impressoes" element={
-        <RotaProtegida><Impressoes /></RotaProtegida>
-      } />
-      <Route path="/impressoras" element={
-        <RotaProtegida><Impressoras /></RotaProtegida>
-      } />
-      <Route path="/catalogo" element={
-        <RotaProtegida><Catalogo /></RotaProtegida>
-      } />
-      <Route path="/financeiro" element={
-        <RotaProtegida><Financeiro /></RotaProtegida>
-      } />
-      <Route path="/perfil" element={
-        <RotaProtegida><Perfil /></RotaProtegida>
-      } />
+      <Route path="/" element={<RotaProtegida><Dashboard /></RotaProtegida>} />
+      <Route path="/impressoes"  element={<RotaProtegida><Impressoes /></RotaProtegida>} />
+      <Route path="/impressoras" element={<RotaProtegida><Impressoras /></RotaProtegida>} />
+      <Route path="/filamentos"  element={<RotaProtegida><Filamentos /></RotaProtegida>} />
+      <Route path="/catalogo"    element={<RotaProtegida><Catalogo /></RotaProtegida>} />
+      <Route path="/financeiro"  element={<RotaProtegida><Financeiro /></RotaProtegida>} />
+      <Route path="/perfil"      element={<RotaProtegida><Perfil /></RotaProtegida>} />
 
-      {/* Rotas só para ADMIN e DEV */}
-      <Route path="/membros" element={
-        <RotaAdmin><Membros /></RotaAdmin>
-      } />
+      <Route path="/membros" element={<RotaAdmin><Membros /></RotaAdmin>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

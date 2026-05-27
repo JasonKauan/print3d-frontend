@@ -24,6 +24,7 @@ export default function Layout({ children }) {
     { to: '/',            label: 'Dashboard'                  },
     { to: '/membros',     label: 'Membros',   adminOnly: true },
     { to: '/impressoras', label: 'Impressoras'                },
+    { to: '/filamentos',  label: 'Filamentos'                 },
     { to: '/impressoes',  label: 'Impressões'                 },
     { to: '/catalogo',    label: 'Catálogo'                   },
     { to: '/financeiro',  label: 'Financeiro'                 },
