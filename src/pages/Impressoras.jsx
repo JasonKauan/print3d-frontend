@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { impressoraService } from '../services/impressoraService'
+import { filamentoService } from '../services/filamentoService'
 import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
 
@@ -18,6 +19,7 @@ export default function Impressoras() {
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
   const { data: impressoras, loading, refetch } = useFetch(() => impressoraService.listar())
+  const { data: filamentos } = useFetch(() => filamentoService.listarDisponiveis())
 
   const [modal, setModal]           = useState(false)
   const [modalUsar, setModalUsar]   = useState(null) // impressora selecionada
@@ -26,7 +28,7 @@ export default function Impressoras() {
   const [editando, setEditando]     = useState(null)
   const [form, setForm]             = useState(FORM_INICIAL)
   const [finalizarForm, setFinalizarForm] = useState(FINALIZAR_FORM)
-  const [usarForm, setUsarForm]     = useState({ produtoNome: '', quantidade: 1 })
+  const [usarForm, setUsarForm]     = useState({ produtoNome: '', quantidade: 1, filamentoId: '' })
   const [saving, setSaving]         = useState(false)
   const [toast, setToast]           = useState(null)
 
@@ -61,7 +63,7 @@ export default function Impressoras() {
       await impressoraService.iniciarUso(modalUsar.id, usarForm)
       setToast({ msg: `Usando ${modalUsar.nome}! Boa impressão!`, type: 'success' })
       setModalUsar(null)
-      setUsarForm({ produtoNome: '', quantidade: 1 })
+      setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' })
       refetch()
     } catch (e) {
       setToast({ msg: e.response?.data?.message || 'Erro ao iniciar uso.', type: 'error' })
@@ -173,7 +175,7 @@ export default function Impressoras() {
                       <div className="space-y-2">
                         {imp.status === 'LIVRE' && !minhaImpressora && (
                           <button className="btn-primary w-full"
-                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1 }) }}>
+                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' }) }}>
                             Usar esta impressora
                           </button>
                         )}
@@ -264,6 +266,17 @@ export default function Impressoras() {
           <FormGroup label="Quantidade">
             <input className="input" type="number" min="1" value={usarForm.quantidade}
               onChange={e => setUsarForm(f => ({ ...f, quantidade: e.target.value }))} />
+          </FormGroup>
+          <FormGroup label="Filamento">
+            <select className="input" value={usarForm.filamentoId}
+              onChange={e => setUsarForm(f => ({ ...f, filamentoId: e.target.value }))}>
+              <option value="">Selecione um filamento</option>
+              {filamentos?.map(fil => (
+                <option key={fil.id} value={fil.id}>
+                  {fil.nome} ({fil.cor})
+                </option>
+              ))}
+            </select>
           </FormGroup>
           <button className="btn-primary w-full mt-1" onClick={iniciarUso} disabled={saving}>
             {saving ? 'Iniciando...' : 'Iniciar uso'}

@@ -1,288 +1,211 @@
 import { useState } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
-import { impressoraService } from '../services/impressoraService'
-import { filamentoService } from '../services/filamentoService'
-import useAuthStore from '../store/useAuthStore'
+import { impressaoService } from '../services/impressaoService'
+import { membroService } from '../services/membroService'
+import { produtoService } from '../services/produtoService'
+import { fmtData, fmtMoeda } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
 
-const FORM_INICIAL = { nome: '', modelo: '', observacao: '' }
-const FINALIZAR_FORM = { tempoReal: '', observacao: '' }
+const FORM = { membroId: '', produtoNome: '', quantidade: 1, tempoImpressao: '', dataImpressao: '', observacao: '' }
 
-const STATUS_CORES = {
-  LIVRE:      { bg: 'bg-green-900/30', border: 'border-success', badge: 'badge-green', label: 'Livre' },
-  OCUPADA:    { bg: 'bg-amber-900/30', border: 'border-warning', badge: 'badge-amber', label: 'Ocupada' },
-  MANUTENCAO: { bg: 'bg-red-900/30',   border: 'border-danger',  badge: 'badge-red',   label: 'Manutenção' },
-}
+export default function Impressoes() {
+  const [aba, setAba] = useState('impressoes')
 
-export default function Impressoras() {
-  const { usuario } = useAuthStore()
-  const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
+  const { data: impressoes, loading: lI, refetch } = useFetch(() => impressaoService.listar())
+  const { data: membros }                           = useFetch(() => membroService.listar('ATIVO'))
+  const { data: produtos, loading: lC }             = useFetch(() => produtoService.listar())
 
-  const { data: impressoras, loading, refetch } = useFetch(() => impressoraService.listar())
-  const { data: filamentosDisponiveis } = useFetch(() => filamentoService.listarDisponiveis())
+  const [modal, setModal]     = useState(false)
+  const [confirmar, setConfirmar] = useState(null)
+  const [editando, setEdit]   = useState(null)
+  const [form, setForm]       = useState(FORM)
+  const [saving, setSaving]   = useState(false)
+  const [toast, setToast]     = useState(null)
 
-  const [modal, setModal]           = useState(false)
-  const [modalUsar, setModalUsar]   = useState(null) // impressora selecionada
-  const [modalFinalizar, setModalFinalizar] = useState(null)
-  const [confirmar, setConfirmar]   = useState(null)
-  const [editando, setEditando]     = useState(null)
-  const [form, setForm]             = useState(FORM_INICIAL)
-  const [finalizarForm, setFinalizarForm] = useState(FINALIZAR_FORM)
-  const [usarForm, setUsarForm]     = useState({ produtoNome: '', quantidade: 1, filamentoId: '' })
-  const [saving, setSaving]         = useState(false)
-  const [toast, setToast]           = useState(null)
-
-  const abrirCriar = () => { setEditando(null); setForm(FORM_INICIAL); setModal(true) }
-  const abrirEditar = (imp) => {
-    setEditando(imp)
-    setForm({ nome: imp.nome, modelo: imp.modelo || '', observacao: imp.observacao || '' })
+  const abrirEditar = (i) => {
+    setEdit(i)
+    setForm({
+      membroId: i.membroId, produtoNome: i.produtoNome,
+      quantidade: i.quantidade, tempoImpressao: i.tempoImpressao || '',
+      dataImpressao: i.dataImpressao || '', observacao: i.observacao || '',
+    })
     setModal(true)
   }
 
+  const selecionarProduto = (nomeProduto) => {
+    setEdit(null)
+    setForm({ ...FORM, produtoNome: nomeProduto })
+    setAba('impressoes')
+    setModal(true)
+    setToast({ msg: `"${nomeProduto}" selecionado!`, type: 'info' })
+  }
+
   const salvar = async () => {
-    if (!form.nome) return
+    if (!form.membroId || !form.produtoNome) return
     setSaving(true)
     try {
       if (editando) {
-        await impressoraService.atualizar(editando.id, form)
-        setToast({ msg: 'Impressora atualizada!', type: 'success' })
+        await impressaoService.atualizar(editando.id, form)
+        setToast({ msg: 'Registro atualizado!', type: 'success' })
       } else {
-        await impressoraService.criar(form)
-        setToast({ msg: 'Impressora cadastrada!', type: 'success' })
+        await impressaoService.criar(form)
+        setToast({ msg: 'Impressão registrada!', type: 'success' })
       }
       setModal(false); refetch()
     } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro ao salvar.', type: 'error' })
+      setToast({ msg: e.response?.data?.message || 'Erro ao salvar', type: 'error' })
     } finally { setSaving(false) }
-  }
-
-  const iniciarUso = async () => {
-    if (!usarForm.produtoNome) return
-    setSaving(true)
-    try {
-      await impressoraService.iniciarUso(modalUsar.id, usarForm)
-      setToast({ msg: `Usando ${modalUsar.nome}! Boa impressão!`, type: 'success' })
-      setModalUsar(null)
-      setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' })
-      refetch()
-    } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro ao iniciar uso.', type: 'error' })
-    } finally { setSaving(false) }
-  }
-
-  const finalizar = async () => {
-    setSaving(true)
-    try {
-      await impressoraService.finalizarUso(modalFinalizar.id, finalizarForm)
-      setToast({ msg: 'Impressão finalizada e registrada!', type: 'success' })
-      setModalFinalizar(null)
-      setFinalizarForm(FINALIZAR_FORM)
-      refetch()
-    } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro ao finalizar.', type: 'error' })
-    } finally { setSaving(false) }
-  }
-
-  const alterarStatus = async (id, status) => {
-    try {
-      await impressoraService.alterarStatus(id, status)
-      setToast({ msg: 'Status atualizado!', type: 'success' })
-      refetch()
-    } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro.', type: 'error' })
-    }
   }
 
   const confirmarDeletar = async () => {
     try {
-      await impressoraService.deletar(confirmar.id)
-      setToast({ msg: 'Impressora removida.', type: 'info' })
+      await impressaoService.deletar(confirmar.id)
       refetch()
-    } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro ao remover.', type: 'error' })
+      setToast({ msg: 'Registro removido.', type: 'info' })
+    } catch {
+      setToast({ msg: 'Erro ao remover.', type: 'error' })
     } finally { setConfirmar(null) }
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // Verifica se o usuário logado está usando alguma impressora
-  const minhaImpressora = impressoras?.find(i => i.membroAtualId && i.membroAtualNome === usuario?.nome)
-
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
-        <h2 className="text-lg font-semibold">Impressoras</h2>
-        {isAdmin && (
-          <button className="btn-primary" onClick={abrirCriar}>+ Nova impressora</button>
-        )}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Impressões</h2>
       </div>
-      <p className="text-gray-500 text-sm mb-5">
-        {isAdmin ? 'Gerencie as impressoras da entidade' : 'Veja a disponibilidade e inicie seu uso'}
-      </p>
 
-      {loading ? <Spinner /> : impressoras?.length === 0
-        ? <Empty text="Nenhuma impressora cadastrada ainda" />
-        : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {impressoras?.map(imp => {
-              const cores = STATUS_CORES[imp.status]
-              const euEstouUsando = imp.membroAtualNome === usuario?.nome
+      <div className="flex gap-1 mb-5 bg-bg2 border border-border rounded-xl p-1 w-fit">
+        <button onClick={() => setAba('impressoes')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${aba === 'impressoes' ? 'bg-accent text-white' : 'text-gray-400 hover:text-white'}`}>
+          Impressões
+        </button>
+        <button onClick={() => setAba('catalogo')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${aba === 'catalogo' ? 'bg-accent text-white' : 'text-gray-400 hover:text-white'}`}>
+          Catálogo
+        </button>
+      </div>
 
-              return (
-                <div key={imp.id} className={`card p-0 overflow-hidden border-2 ${cores.border} transition-all`}>
-                  {/* Header com status */}
-                  <div className={`${cores.bg} px-4 py-3 flex justify-between items-center`}>
-                    <div>
-                      <p className="font-semibold text-sm">{imp.nome}</p>
-                      {imp.modelo && <p className="text-xs text-gray-400">{imp.modelo}</p>}
-                    </div>
-                    <span className={cores.badge}>{cores.label}</span>
-                  </div>
-
-                  <div className="p-4">
-                    {/* Quem está usando */}
-                    {imp.status === 'OCUPADA' && imp.membroAtualNome && (
-                      <div className="flex items-center gap-3 mb-3 p-3 bg-bg3 rounded-lg">
-                        <div className="w-9 h-9 rounded-full bg-bg border border-border relative overflow-hidden flex items-center justify-center shrink-0">
-                          {imp.membroAtualFoto
-                            ? <img src={imp.membroAtualFoto} alt={imp.membroAtualNome}
-                                className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => { e.target.style.display = 'none' }} />
-                            : <span className="text-xs text-gray-500 font-medium">
-                                {imp.membroAtualNome?.charAt(0)?.toUpperCase()}
-                              </span>
-                          }
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Usando agora</p>
-                          <p className="text-sm font-medium">
-                            {euEstouUsando ? 'Você' : imp.membroAtualNome}
-                          </p>
-                          {imp.produtoEmImpressao && (
-                            <p className="text-xs text-gray-500">{imp.produtoEmImpressao} × {imp.quantidadeEmImpressao}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Manutenção */}
-                    {imp.status === 'MANUTENCAO' && imp.observacao && (
-                      <p className="text-xs text-gray-500 mb-3 italic">{imp.observacao}</p>
-                    )}
-
-                    {/* Ações do membro */}
-                    {!isAdmin && (
-                      <div className="space-y-2">
-                        {imp.status === 'LIVRE' && !minhaImpressora && (
-                          <button className="btn-primary w-full"
-                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' }) }}>
-                            Usar esta impressora
-                          </button>
-                        )}
-                        {euEstouUsando && (
-                          <button className="btn-success w-full"
-                            onClick={() => { setModalFinalizar(imp); setFinalizarForm(FINALIZAR_FORM) }}>
-                            ✓ Finalizar minha impressão
-                          </button>
-                        )}
-                        {imp.status === 'OCUPADA' && !euEstouUsando && (
-                          <p className="text-xs text-gray-500 text-center">Em uso por {imp.membroAtualNome}</p>
-                        )}
-                        {minhaImpressora && !euEstouUsando && imp.status === 'LIVRE' && (
-                          <p className="text-xs text-gray-500 text-center">Finalize seu uso atual primeiro</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Ações do admin */}
-                    {isAdmin && (
-                      <div className="space-y-2">
+      {aba === 'impressoes' && (
+        <>
+          <p className="text-gray-500 text-sm mb-4">O que foi produzido, por quem e quando</p>
+          {lI ? <Spinner /> : (
+            <div className="card p-0 overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className="th">Membro</th>
+                    <th className="th">Produto</th>
+                    <th className="th hidden sm:table-cell">Qtd</th>
+                    <th className="th hidden md:table-cell">Tempo</th>
+                    <th className="th">Data</th>
+                    <th className="th"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {impressoes?.length === 0 && <tr><td colSpan={6}><Empty text="Nenhuma impressão ainda — vá ao Catálogo para registrar" /></td></tr>}
+                  {impressoes?.map(i => (
+                    <tr key={i.id}>
+                      <td className="td font-medium">{i.membroNome}</td>
+                      <td className="td">{i.produtoNome}</td>
+                      <td className="td hidden sm:table-cell">{i.quantidade} unid.</td>
+                      <td className="td text-gray-400 font-mono text-xs hidden md:table-cell">{i.tempoImpressao || '—'}</td>
+                      <td className="td text-gray-400">{fmtData(i.dataImpressao)}</td>
+                      <td className="td">
                         <div className="flex gap-2">
-                          <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(imp)}>
-                            Editar
-                          </button>
-                          <button className="btn-danger" onClick={() => setConfirmar({ id: imp.id, nome: imp.nome })}>
-                            ✕
-                          </button>
+                          <button className="btn-ghost text-xs px-2 py-1" onClick={() => abrirEditar(i)}>Editar</button>
+                          <button className="btn-danger" onClick={() => setConfirmar({ id: i.id, nome: i.produtoNome })}>✕</button>
                         </div>
-                        {imp.status === 'OCUPADA' && (
-                          <button className="btn-ghost w-full text-xs"
-                            onClick={() => { setModalFinalizar(imp); setFinalizarForm(FINALIZAR_FORM) }}>
-                            Finalizar uso forçado
-                          </button>
-                        )}
-                        <div className="flex gap-2">
-                          {imp.status !== 'LIVRE' && (
-                            <button className="btn-ghost text-xs flex-1 text-success"
-                              onClick={() => alterarStatus(imp.id, 'LIVRE')}>
-                              Liberar
-                            </button>
-                          )}
-                          {imp.status !== 'MANUTENCAO' && (
-                            <button className="btn-ghost text-xs flex-1 text-danger"
-                              onClick={() => alterarStatus(imp.id, 'MANUTENCAO')}>
-                              Manutenção
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-      {/* Modal criar/editar impressora */}
-      {modal && (
-        <Modal title={editando ? 'Editar impressora' : 'Nova impressora'} onClose={() => setModal(false)}>
-          <FormGroup label="Nome *">
-            <input className="input" value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Ex: Impressora 1, Ender 3..." />
-          </FormGroup>
-          <FormGroup label="Modelo">
-            <input className="input" value={form.modelo} onChange={e => set('modelo', e.target.value)} placeholder="Ex: Creality Ender 3 Pro" />
-          </FormGroup>
-          <FormGroup label="Observações">
-            <textarea className="input min-h-[64px] resize-y" value={form.observacao} onChange={e => set('observacao', e.target.value)} placeholder="Informações adicionais..." />
-          </FormGroup>
-          <button className="btn-primary w-full mt-1" onClick={salvar} disabled={saving}>
-            {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar impressora'}
-          </button>
-        </Modal>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Modal iniciar uso */}
-      {modalUsar && (
-        <Modal title={`Usar ${modalUsar.nome}`} onClose={() => setModalUsar(null)}>
-          <p className="text-gray-400 text-sm mb-4">
-            Preencha o que você vai imprimir. A impressora será marcada como ocupada imediatamente.
-          </p>
-          <FormGroup label="Produto a imprimir *">
-            <input className="input" value={usarForm.produtoNome}
-              onChange={e => setUsarForm(f => ({ ...f, produtoNome: e.target.value }))}
-              placeholder="Nome do produto" />
-          </FormGroup>
-          <FormGroup label="Quantidade">
-            <input className="input" type="number" min="1" value={usarForm.quantidade}
-              onChange={e => setUsarForm(f => ({ ...f, quantidade: e.target.value }))} />
-          </FormGroup>
-          <FormGroup label="Filamento">
-            <select className="input" value={usarForm.filamentoId}
-              onChange={e => setUsarForm(f => ({ ...f, filamentoId: e.target.value }))}>
-              <option value="">Selecione um filamento</option>
-              {filamentosDisponiveis?.map(f => (
-                <option key={f.id} value={f.id}>
-                  {f.nome} {f.marca && `(${f.marca})`} - {Number(f.pesoDisponivelGramas).toFixed(0)}g disponíveis
-                </option>
-              ))}
+      {aba === 'catalogo' && (
+        <>
+          <p className="text-gray-500 text-sm mb-4">Clique em um produto para registrar uma impressão com ele</p>
+          {lC ? <Spinner /> : produtos?.length === 0
+            ? <Empty text="Nenhum produto no catálogo ainda" />
+            : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {produtos?.map(p => (
+                  <div key={p.id}
+                    className="card p-0 overflow-hidden hover:border-accent transition-colors cursor-pointer group"
+                    onClick={() => selecionarProduto(p.nome)}>
+                    <div className="h-36 bg-bg3 relative overflow-hidden">
+                      {p.fotoUrl
+                        ? <img src={p.fotoUrl} alt={p.nome}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            onError={(e) => { e.target.style.display = 'none' }} />
+                        : <div className="flex items-center justify-center h-full text-gray-600 text-sm">sem foto</div>
+                      }
+                      <div className="absolute inset-0 bg-accent/0 group-hover:bg-accent/20 transition-colors flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-accent text-white text-xs px-3 py-1 rounded-full font-medium">
+                          + Registrar impressão
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="font-semibold text-sm mb-1">{p.nome}</p>
+                      <p className="text-gray-500 text-xs mb-2 line-clamp-1">{p.descricao || ''}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-accent font-mono text-xs">{fmtMoeda(p.preco)}</span>
+                        <span className="text-gray-500 text-xs">{p.estoque} em estoque</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+        </>
+      )}
+
+      {modal && (
+        <Modal title={editando ? 'Editar registro' : 'Registrar impressão'} onClose={() => setModal(false)}>
+          <FormGroup label="Membro *">
+            <select className="input" value={form.membroId} onChange={e => set('membroId', e.target.value)}>
+              <option value="">Selecione...</option>
+              {membros?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </FormGroup>
-          <button className="btn-primary w-full mt-1" onClick={iniciarUso} disabled={saving}>
-            {saving ? 'Iniciando...' : 'Iniciar uso'}
+          <FormGroup label="Produto impresso *">
+            <input className="input" value={form.produtoNome} onChange={e => set('produtoNome', e.target.value)} placeholder="Nome do produto" />
+          </FormGroup>
+          <div className="grid grid-cols-2 gap-3">
+            <FormGroup label="Quantidade">
+              <input className="input" type="number" min="1" value={form.quantidade} onChange={e => set('quantidade', e.target.value)} />
+            </FormGroup>
+            <FormGroup label="Tempo de impressão">
+              <input className="input" value={form.tempoImpressao} onChange={e => set('tempoImpressao', e.target.value)} placeholder="ex: 4h30min" />
+            </FormGroup>
+          </div>
+          <FormGroup label="Data">
+            <input className="input" type="date" value={form.dataImpressao} onChange={e => set('dataImpressao', e.target.value)} />
+          </FormGroup>
+          <FormGroup label="Observações">
+            <textarea className="input min-h-[72px] resize-y" value={form.observacao} onChange={e => set('observacao', e.target.value)} placeholder="Informações adicionais..." />
+          </FormGroup>
+          <button className="btn-primary w-full mt-1" onClick={salvar} disabled={saving}>
+            {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Registrar impressão'}
           </button>
         </Modal>
       )}
+
+      {confirmar && (
+        <ModalConfirm
+          titulo="Remover impressão"
+          mensagem={`Tem certeza que deseja remover o registro de "${confirmar.nome}"? Esta ação não pode ser desfeita.`}
+          onConfirmar={confirmarDeletar}
+          onCancelar={() => setConfirmar(null)}
+        />
+      )}
+
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }
