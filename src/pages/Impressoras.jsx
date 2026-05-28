@@ -6,7 +6,7 @@ import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
 
 const FORM_INICIAL = { nome: '', modelo: '', observacao: '' }
-const FINALIZAR_FORM = { tempoReal: '', observacao: '' }
+const FINALIZAR_FORM = { tempoReal: '', gramasUsadas: '', observacao: '' }
 
 const STATUS_CORES = {
   LIVRE:      { bg: 'bg-green-900/30', border: 'border-success', badge: 'badge-green', label: 'Livre' },
@@ -19,18 +19,18 @@ export default function Impressoras() {
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
   const { data: impressoras, loading, refetch } = useFetch(() => impressoraService.listar())
-  const { data: filamentos } = useFetch(() => filamentoService.listarDisponiveis())
+  const { data: filamentos }                     = useFetch(() => filamentoService.listarDisponiveis())
 
-  const [modal, setModal]           = useState(false)
-  const [modalUsar, setModalUsar]   = useState(null) // impressora selecionada
+  const [modal, setModal]                   = useState(false)
+  const [modalUsar, setModalUsar]           = useState(null)
   const [modalFinalizar, setModalFinalizar] = useState(null)
-  const [confirmar, setConfirmar]   = useState(null)
-  const [editando, setEditando]     = useState(null)
-  const [form, setForm]             = useState(FORM_INICIAL)
-  const [finalizarForm, setFinalizarForm] = useState(FINALIZAR_FORM)
-  const [usarForm, setUsarForm]     = useState({ produtoNome: '', quantidade: 1, filamentoId: '' })
-  const [saving, setSaving]         = useState(false)
-  const [toast, setToast]           = useState(null)
+  const [confirmar, setConfirmar]           = useState(null)
+  const [editando, setEditando]             = useState(null)
+  const [form, setForm]                     = useState(FORM_INICIAL)
+  const [finalizarForm, setFinalizarForm]   = useState(FINALIZAR_FORM)
+  const [usarForm, setUsarForm]             = useState({ produtoNome: '', quantidade: 1, filamentoId: '', gramasEstimadas: '' })
+  const [saving, setSaving]                 = useState(false)
+  const [toast, setToast]                   = useState(null)
 
   const abrirCriar = () => { setEditando(null); setForm(FORM_INICIAL); setModal(true) }
   const abrirEditar = (imp) => {
@@ -60,10 +60,15 @@ export default function Impressoras() {
     if (!usarForm.produtoNome) return
     setSaving(true)
     try {
-      await impressoraService.iniciarUso(modalUsar.id, usarForm)
+      await impressoraService.iniciarUso(modalUsar.id, {
+        produtoNome: usarForm.produtoNome,
+        quantidade: usarForm.quantidade,
+        filamentoId: usarForm.filamentoId || null,
+        gramasEstimadas: usarForm.gramasEstimadas || null,
+      })
       setToast({ msg: `Usando ${modalUsar.nome}! Boa impressão!`, type: 'success' })
       setModalUsar(null)
-      setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' })
+      setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '', gramasEstimadas: '' })
       refetch()
     } catch (e) {
       setToast({ msg: e.response?.data?.message || 'Erro ao iniciar uso.', type: 'error' })
@@ -73,8 +78,12 @@ export default function Impressoras() {
   const finalizar = async () => {
     setSaving(true)
     try {
-      await impressoraService.finalizarUso(modalFinalizar.id, finalizarForm)
-      setToast({ msg: 'Impressão finalizada e registrada!', type: 'success' })
+      await impressoraService.finalizarUso(modalFinalizar.id, {
+        tempoReal: finalizarForm.tempoReal,
+        gramasUsadas: finalizarForm.gramasUsadas || null,
+        observacao: finalizarForm.observacao,
+      })
+      setToast({ msg: 'Impressão finalizada e registrada automaticamente!', type: 'success' })
       setModalFinalizar(null)
       setFinalizarForm(FINALIZAR_FORM)
       refetch()
@@ -104,17 +113,19 @@ export default function Impressoras() {
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const minhaImpressora = impressoras?.find(i => i.membroAtualNome === usuario?.nome)
 
-  // Verifica se o usuário logado está usando alguma impressora
-  const minhaImpressora = impressoras?.find(i => i.membroAtualId && i.membroAtualNome === usuario?.nome)
+  // Filamento selecionado no modal de usar — pra mostrar custo/grama
+  const filamentoSelecionado = filamentos?.find(f => String(f.id) === String(usarForm.filamentoId))
+  const custoEstimado = filamentoSelecionado && usarForm.gramasEstimadas
+    ? (Number(usarForm.gramasEstimadas) * Number(filamentoSelecionado.custoPorGrama)).toFixed(2)
+    : null
 
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-lg font-semibold">Impressoras</h2>
-        {isAdmin && (
-          <button className="btn-primary" onClick={abrirCriar}>+ Nova impressora</button>
-        )}
+        {isAdmin && <button className="btn-primary" onClick={abrirCriar}>+ Nova impressora</button>}
       </div>
       <p className="text-gray-500 text-sm mb-5">
         {isAdmin ? 'Gerencie as impressoras da entidade' : 'Veja a disponibilidade e inicie seu uso'}
@@ -130,7 +141,6 @@ export default function Impressoras() {
 
               return (
                 <div key={imp.id} className={`card p-0 overflow-hidden border-2 ${cores.border} transition-all`}>
-                  {/* Header com status */}
                   <div className={`${cores.bg} px-4 py-3 flex justify-between items-center`}>
                     <div>
                       <p className="font-semibold text-sm">{imp.nome}</p>
@@ -140,7 +150,6 @@ export default function Impressoras() {
                   </div>
 
                   <div className="p-4">
-                    {/* Quem está usando */}
                     {imp.status === 'OCUPADA' && imp.membroAtualNome && (
                       <div className="flex items-center gap-3 mb-3 p-3 bg-bg3 rounded-lg">
                         <div className="w-9 h-9 rounded-full bg-bg border border-border relative overflow-hidden flex items-center justify-center shrink-0">
@@ -155,9 +164,7 @@ export default function Impressoras() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-400">Usando agora</p>
-                          <p className="text-sm font-medium">
-                            {euEstouUsando ? 'Você' : imp.membroAtualNome}
-                          </p>
+                          <p className="text-sm font-medium">{euEstouUsando ? 'Você' : imp.membroAtualNome}</p>
                           {imp.produtoEmImpressao && (
                             <p className="text-xs text-gray-500">{imp.produtoEmImpressao} × {imp.quantidadeEmImpressao}</p>
                           )}
@@ -165,22 +172,20 @@ export default function Impressoras() {
                       </div>
                     )}
 
-                    {/* Manutenção */}
                     {imp.status === 'MANUTENCAO' && imp.observacao && (
                       <p className="text-xs text-gray-500 mb-3 italic">{imp.observacao}</p>
                     )}
 
-                    {/* Ações do membro */}
                     {!isAdmin && (
                       <div className="space-y-2">
                         {imp.status === 'LIVRE' && !minhaImpressora && (
                           <button className="btn-primary w-full"
-                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '' }) }}>
+                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '', gramasEstimadas: '' }) }}>
                             Usar esta impressora
                           </button>
                         )}
                         {euEstouUsando && (
-                          <button className="btn-success w-full"
+                          <button className="w-full py-2 rounded-lg bg-success text-bg font-medium text-sm"
                             onClick={() => { setModalFinalizar(imp); setFinalizarForm(FINALIZAR_FORM) }}>
                             ✓ Finalizar minha impressão
                           </button>
@@ -194,16 +199,11 @@ export default function Impressoras() {
                       </div>
                     )}
 
-                    {/* Ações do admin */}
                     {isAdmin && (
                       <div className="space-y-2">
                         <div className="flex gap-2">
-                          <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(imp)}>
-                            Editar
-                          </button>
-                          <button className="btn-danger" onClick={() => setConfirmar({ id: imp.id, nome: imp.nome })}>
-                            ✕
-                          </button>
+                          <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(imp)}>Editar</button>
+                          <button className="btn-danger" onClick={() => setConfirmar({ id: imp.id, nome: imp.nome })}>✕</button>
                         </div>
                         {imp.status === 'OCUPADA' && (
                           <button className="btn-ghost w-full text-xs"
@@ -214,15 +214,11 @@ export default function Impressoras() {
                         <div className="flex gap-2">
                           {imp.status !== 'LIVRE' && (
                             <button className="btn-ghost text-xs flex-1 text-success"
-                              onClick={() => alterarStatus(imp.id, 'LIVRE')}>
-                              Liberar
-                            </button>
+                              onClick={() => alterarStatus(imp.id, 'LIVRE')}>Liberar</button>
                           )}
                           {imp.status !== 'MANUTENCAO' && (
                             <button className="btn-ghost text-xs flex-1 text-danger"
-                              onClick={() => alterarStatus(imp.id, 'MANUTENCAO')}>
-                              Manutenção
-                            </button>
+                              onClick={() => alterarStatus(imp.id, 'MANUTENCAO')}>Manutenção</button>
                           )}
                         </div>
                       </div>
@@ -234,7 +230,7 @@ export default function Impressoras() {
           </div>
         )}
 
-      {/* Modal criar/editar impressora */}
+      {/* Modal criar/editar */}
       {modal && (
         <Modal title={editando ? 'Editar impressora' : 'Nova impressora'} onClose={() => setModal(false)}>
           <FormGroup label="Nome *">
@@ -256,7 +252,7 @@ export default function Impressoras() {
       {modalUsar && (
         <Modal title={`Usar ${modalUsar.nome}`} onClose={() => setModalUsar(null)}>
           <p className="text-gray-400 text-sm mb-4">
-            Preencha o que você vai imprimir. A impressora será marcada como ocupada imediatamente.
+            A impressora será marcada como ocupada imediatamente.
           </p>
           <FormGroup label="Produto a imprimir *">
             <input className="input" value={usarForm.produtoNome}
@@ -267,18 +263,31 @@ export default function Impressoras() {
             <input className="input" type="number" min="1" value={usarForm.quantidade}
               onChange={e => setUsarForm(f => ({ ...f, quantidade: e.target.value }))} />
           </FormGroup>
-          <FormGroup label="Filamento">
+          <FormGroup label="Filamento (opcional)">
             <select className="input" value={usarForm.filamentoId}
               onChange={e => setUsarForm(f => ({ ...f, filamentoId: e.target.value }))}>
-              <option value="">Selecione um filamento</option>
-              {filamentos?.map(fil => (
-                <option key={fil.id} value={fil.id}>
-                  {fil.nome} ({fil.cor})
+              <option value="">Selecione um filamento...</option>
+              {filamentos?.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.nome} {f.cor ? `— ${f.cor}` : ''} ({Number(f.pesoDisponivelGramas).toFixed(0)}g disponíveis)
                 </option>
               ))}
             </select>
           </FormGroup>
-          <button className="btn-primary w-full mt-1" onClick={iniciarUso} disabled={saving}>
+          {usarForm.filamentoId && (
+            <FormGroup label="Gramas estimadas">
+              <input className="input" type="number" step="0.1" value={usarForm.gramasEstimadas}
+                onChange={e => setUsarForm(f => ({ ...f, gramasEstimadas: e.target.value }))}
+                placeholder="Ex: 45.5" />
+            </FormGroup>
+          )}
+          {custoEstimado && (
+            <div className="bg-bg3 border border-border rounded-lg px-4 py-3 text-sm mb-3">
+              <span className="text-gray-400">Custo estimado de filamento: </span>
+              <span className="text-warning font-mono font-medium">R$ {custoEstimado}</span>
+            </div>
+          )}
+          <button className="btn-primary w-full" onClick={iniciarUso} disabled={saving}>
             {saving ? 'Iniciando...' : 'Iniciar uso'}
           </button>
         </Modal>
@@ -286,7 +295,7 @@ export default function Impressoras() {
 
       {/* Modal finalizar uso */}
       {modalFinalizar && (
-        <Modal title={`Finalizar uso — ${modalFinalizar.nome}`} onClose={() => setModalFinalizar(null)}>
+        <Modal title={`Finalizar — ${modalFinalizar.nome}`} onClose={() => setModalFinalizar(null)}>
           <p className="text-gray-400 text-sm mb-4">
             A impressão será registrada automaticamente no histórico.
           </p>
@@ -294,6 +303,11 @@ export default function Impressoras() {
             <input className="input" value={finalizarForm.tempoReal}
               onChange={e => setFinalizarForm(f => ({ ...f, tempoReal: e.target.value }))}
               placeholder="Ex: 3h45min" />
+          </FormGroup>
+          <FormGroup label="Gramas usadas de filamento">
+            <input className="input" type="number" step="0.1" value={finalizarForm.gramasUsadas}
+              onChange={e => setFinalizarForm(f => ({ ...f, gramasUsadas: e.target.value }))}
+              placeholder="Ex: 42.3" />
           </FormGroup>
           <FormGroup label="Observações">
             <textarea className="input min-h-[64px] resize-y" value={finalizarForm.observacao}
