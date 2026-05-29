@@ -15,10 +15,7 @@ export default function Layout({ children }) {
       .catch(() => {})
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+  const handleLogout = () => { logout(); navigate('/login') }
 
   const navItems = [
     { to: '/',            label: 'Dashboard'                  },
@@ -26,6 +23,7 @@ export default function Layout({ children }) {
     { to: '/impressoras', label: 'Impressoras'                },
     { to: '/filamentos',  label: 'Filamentos'                 },
     { to: '/impressoes',  label: 'Impressões'                 },
+    { to: '/producao',    label: 'Produção'                   },
     { to: '/catalogo',    label: 'Catálogo'                   },
     { to: '/financeiro',  label: 'Financeiro'                 },
   ]
@@ -39,15 +37,10 @@ export default function Layout({ children }) {
           {navItems
             .filter(item => !item.adminOnly || isAdmin)
             .map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
+              <NavLink key={to} to={to} end={to === '/'}
                 className={({ isActive }) =>
                   `px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${
-                    isActive
-                      ? 'bg-accent text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-bg3'
+                    isActive ? 'bg-accent text-white' : 'text-gray-400 hover:text-white hover:bg-bg3'
                   }`
                 }
               >
@@ -69,15 +62,10 @@ export default function Layout({ children }) {
             </NavLink>
 
             {isAdmin && (
-              <span className="badge-blue text-xs hidden sm:block">
-                {usuario?.role?.toLowerCase()}
-              </span>
+              <span className="badge-blue text-xs hidden sm:block">{usuario?.role?.toLowerCase()}</span>
             )}
 
-            <button
-              onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-danger transition-colors"
-            >
+            <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-danger transition-colors">
               Sair
             </button>
           </div>

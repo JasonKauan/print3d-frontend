@@ -13,6 +13,7 @@ import Filamentos from './pages/Filamentos'
 import Catalogo from './pages/Catalogo'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
+import Producao from './pages/Producao'
 
 function RotaProtegida({ children }) {
   const { token } = useAuthStore()
@@ -35,15 +36,16 @@ export default function App() {
       <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
       <Route path="/resetar-senha"  element={<ResetarSenha />} />
 
-      <Route path="/" element={<RotaProtegida><Dashboard /></RotaProtegida>} />
+      <Route path="/"            element={<RotaProtegida><Dashboard /></RotaProtegida>} />
       <Route path="/impressoes"  element={<RotaProtegida><Impressoes /></RotaProtegida>} />
       <Route path="/impressoras" element={<RotaProtegida><Impressoras /></RotaProtegida>} />
       <Route path="/filamentos"  element={<RotaProtegida><Filamentos /></RotaProtegida>} />
       <Route path="/catalogo"    element={<RotaProtegida><Catalogo /></RotaProtegida>} />
       <Route path="/financeiro"  element={<RotaProtegida><Financeiro /></RotaProtegida>} />
       <Route path="/perfil"      element={<RotaProtegida><Perfil /></RotaProtegida>} />
+      <Route path="/producao"    element={<RotaProtegida><Producao /></RotaProtegida>} />
 
-      <Route path="/membros" element={<RotaAdmin><Membros /></RotaAdmin>} />
+      <Route path="/membros"     element={<RotaAdmin><Membros /></RotaAdmin>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
