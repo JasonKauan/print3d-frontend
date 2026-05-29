@@ -13,7 +13,7 @@ const FORM = { membroId: '', produtoNome: '', quantidade: 1, valorTotal: '', dat
 
 export default function Financeiro() {
   const { usuario } = useAuthStore()
-  const isAdmin = usuario?.role === 'ADMIN'
+  const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
   const { data: vendas,  loading: lV, refetch: rV } = useFetch(() => vendaService.listar())
   const { data: resumo,  loading: lR, refetch: rR } = useFetch(() => vendaService.resumoGeral())
@@ -107,15 +107,13 @@ export default function Financeiro() {
         <h2 className="text-lg font-semibold">Financeiro</h2>
         <div className="flex gap-2">
           {isAdmin && (
-            <>
-              <button className="btn-ghost text-xs px-3 py-1.5" onClick={handlePdfGeral} disabled={gerando}>
-                {gerando ? 'Gerando...' : '↓ PDF Geral'}
-              </button>
-              <button className="btn-primary" onClick={() => { setForm(FORM); setModal(true) }}>
-                + Registrar venda
-              </button>
-            </>
+            <button className="btn-ghost text-xs px-3 py-1.5" onClick={handlePdfGeral} disabled={gerando}>
+              {gerando ? 'Gerando...' : '↓ PDF Geral'}
+            </button>
           )}
+          <button className="btn-primary" onClick={() => { setForm(FORM); setModal(true) }}>
+            + Registrar venda
+          </button>
         </div>
       </div>
       <p className="text-gray-500 text-sm mb-5">
