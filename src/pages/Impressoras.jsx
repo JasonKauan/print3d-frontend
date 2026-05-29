@@ -207,6 +207,12 @@ export default function Impressoras() {
                           <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(imp)}>Editar</button>
                           <button className="btn-danger" onClick={() => setConfirmar({ id: imp.id, nome: imp.nome })}>✕</button>
                         </div>
+                        {imp.status === 'LIVRE' && (
+                          <button className="btn-primary w-full text-xs"
+                            onClick={() => { setModalUsar(imp); setUsarForm({ produtoNome: '', quantidade: 1, filamentoId: '', gramasEstimadas: '' }) }}>
+                            Usar impressora
+                          </button>
+                        )}
                         {imp.status === 'OCUPADA' && (
                           <button className="btn-ghost w-full text-xs"
                             onClick={() => { setModalFinalizar(imp); setFinalizarForm(FINALIZAR_FORM) }}>
