@@ -15,6 +15,7 @@ import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
 import Producao from './pages/Producao'
 import PainelAdmin from './pages/PainelAdmin'
+import Estoque from './pages/Estoque'
 
 function RotaProtegida({ children }) {
   const { token } = useAuthStore()
@@ -45,6 +46,7 @@ export default function App() {
       <Route path="/financeiro"  element={<RotaProtegida><Financeiro /></RotaProtegida>} />
       <Route path="/perfil"      element={<RotaProtegida><Perfil /></RotaProtegida>} />
       <Route path="/producao"    element={<RotaProtegida><Producao /></RotaProtegida>} />
+      <Route path="/estoque"     element={<RotaProtegida><Estoque /></RotaProtegida>} />
 
       <Route path="/membros"     element={<RotaAdmin><Membros /></RotaAdmin>} />
       <Route path="/admin"       element={<RotaAdmin><PainelAdmin /></RotaAdmin>} />
