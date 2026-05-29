@@ -4,6 +4,9 @@ import useAuthStore from '../../store/useAuthStore'
 import api from '../../services/api'
 import { Modal, FormGroup, Toast } from '../common'
 import { configuracaoService } from '../../services/configuracaoService'
+import { useNomeEntidade } from '../../hooks/useNomeEntidade'
+import { setNomeEntidade as setPdfNome } from '../../utils/gerarPdf'
+import { setNomeEntidade as setExcelNome } from '../../utils/gerarExcel'
 
 const TIPO_ICONE = {
   NOVA_VENDA:          '🛍️',
@@ -60,6 +63,13 @@ export default function Layout({ children }) {
   const { usuario, logout } = useAuthStore()
   const navigate = useNavigate()
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
+  const nomeEntidade = useNomeEntidade()
+
+  // Propaga o nome da entidade para os geradores de PDF e Excel
+  useEffect(() => {
+    setPdfNome(nomeEntidade)
+    setExcelNome(nomeEntidade)
+  }, [nomeEntidade])
 
   const [fotoUrl, setFotoUrl]         = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -159,7 +169,7 @@ export default function Layout({ children }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-border">
-        <span className="font-mono text-accent text-lg font-bold">◈ Print3D</span>
+        <span className="font-mono text-accent text-lg font-bold">◈ {nomeEntidade}</span>
       </div>
 
       {/* Nav links */}
@@ -248,7 +258,7 @@ export default function Layout({ children }) {
             </svg>
           </button>
 
-          <div className="lg:hidden font-mono text-accent text-sm font-bold">◈ Print3D</div>
+          <div className="lg:hidden font-mono text-accent text-sm font-bold">◈ {nomeEntidade}</div>
 
           {/* Notificações */}
           <div className="relative ml-auto" ref={sininhoRef}>

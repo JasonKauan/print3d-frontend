@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import useAuthStore from '../store/useAuthStore'
+import { useNomeEntidade } from '../hooks/useNomeEntidade'
 
 export default function Login() {
   const [form, setForm]       = useState({ email: '', senha: '' })
@@ -9,6 +10,7 @@ export default function Login() {
   const { login }             = useAuthStore()
   const navigate              = useNavigate()
   const location              = useLocation()
+  const nomeEntidade          = useNomeEntidade()
 
   // Mensagem de sucesso vinda do /setup ou /resetar-senha
   const mensagemSucesso = location.state?.mensagem
@@ -37,7 +39,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <span className="text-4xl font-mono text-accent">◈</span>
-          <h1 className="text-2xl font-semibold mt-2">Print3D</h1>
+          <h1 className="text-2xl font-semibold mt-2">{nomeEntidade}</h1>
           <p className="text-gray-500 text-sm mt-1">Sistema de gestão</p>
         </div>
 

@@ -16,6 +16,9 @@ function fmtData(d) {
   return `${dd}/${m}/${y}`
 }
 
+let _nomeEntidade = 'Print3D'
+export function setNomeEntidade(nome) { _nomeEntidade = nome || 'Print3D' }
+
 function cabecalho(doc, titulo, subtitulo) {
   // Fundo do cabeçalho
   doc.setFillColor(...COR_DARK)
@@ -25,7 +28,7 @@ function cabecalho(doc, titulo, subtitulo) {
   doc.setTextColor(79, 124, 255)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('◈ Print3D', 14, 12)
+  doc.text(`◈ ${_nomeEntidade}`, 14, 12)
 
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(12)
@@ -47,7 +50,7 @@ function rodape(doc) {
     doc.setFontSize(8)
     doc.setTextColor(160, 160, 160)
     doc.text(`Página ${i} de ${totalPaginas}`, 196, 290, { align: 'right' })
-    doc.text('Print3D — Sistema de Gestão', 14, 290)
+    doc.text(`${_nomeEntidade} — Sistema de Gestão`, 14, 290)
   }
 }
 
@@ -96,7 +99,7 @@ export function gerarExtratoMembro(membro, vendas, resumo) {
 
   autoTable(doc, {
     startY: y,
-    head: [['Produto', 'Qtd', 'Valor total', 'Repasse (70%)', 'Data', 'Status']],
+    head: [['Produto', 'Qtd', 'Valor total', 'Repasse', 'Data', 'Status']],
     body: vendas.map(v => [
       v.produtoNome,
       v.quantidade,

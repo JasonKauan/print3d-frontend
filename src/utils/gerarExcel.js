@@ -1,5 +1,8 @@
 import * as XLSX from 'xlsx'
 
+let _nomeEntidade = 'Print3D'
+export function setNomeEntidade(nome) { _nomeEntidade = nome || 'Print3D' }
+
 function fmtData(dt) {
   if (!dt) return ''
   return new Date(dt).toLocaleDateString('pt-BR')
@@ -153,7 +156,7 @@ export function gerarRelatorioExcel({ vendas, impressoes, movimentacoes, filamen
 
   // Gera e faz download do arquivo
   const data = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-  XLSX.writeFile(wb, `Print3D_Relatorio_${data}.xlsx`)
+  XLSX.writeFile(wb, `${_nomeEntidade}_Relatorio_${data}.xlsx`)
 }
 
 // Exportação individual por membro — para o Financeiro
@@ -181,5 +184,5 @@ export function gerarExtratoMembroExcel(membro, vendas) {
   XLSX.utils.book_append_sheet(wb, ws, 'Extrato')
 
   const data = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-  XLSX.writeFile(wb, `Print3D_Extrato_${membro.nome}_${data}.xlsx`)
+  XLSX.writeFile(wb, `${_nomeEntidade}_Extrato_${membro.nome}_${data}.xlsx`)
 }

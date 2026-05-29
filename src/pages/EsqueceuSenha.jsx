@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
+import { useNomeEntidade } from '../hooks/useNomeEntidade'
 
 export default function EsqueceuSenha() {
+  const nomeEntidade          = useNomeEntidade()
   const [email, setEmail]     = useState('')
   const [loading, setLoading] = useState(false)
   const [enviado, setEnviado] = useState(false)
@@ -27,7 +29,7 @@ export default function EsqueceuSenha() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <span className="text-4xl font-mono text-accent">◈</span>
-          <h1 className="text-2xl font-semibold mt-2">Print3D</h1>
+          <h1 className="text-2xl font-semibold mt-2">{nomeEntidade}</h1>
           <p className="text-gray-500 text-sm mt-1">Recuperação de senha</p>
         </div>
 

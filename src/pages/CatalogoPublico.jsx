@@ -17,8 +17,8 @@ export default function CatalogoPublico() {
       .then(data => { setProdutos(data); setLoading(false) })
       .catch(() => setLoading(false))
 
-    // Tenta carregar nome da entidade
-    fetch(`${API}/configuracoes`, {})
+    // Carrega nome da entidade via endpoint público
+    fetch(`${API}/configuracoes/publico`)
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.NOME_ENTIDADE) setEntidade(data.NOME_ENTIDADE) })
       .catch(() => {})

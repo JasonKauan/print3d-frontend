@@ -3,6 +3,7 @@ import { Modal, Spinner, Empty, FormGroup, Toast, StatCard } from '../components
 import { vendaService } from '../services/vendaService'
 import { membroService } from '../services/membroService'
 import { produtoService } from '../services/produtoService'
+import { configuracaoService } from '../services/configuracaoService'
 import { fmtData, fmtMoeda } from '../utils/formatters'
 import { gerarRelatorioGeral, gerarExtratoMembro } from '../utils/gerarPdf'
 import useAuthStore from '../store/useAuthStore'
@@ -18,6 +19,10 @@ export default function Financeiro() {
   const { data: resumo,  loading: lR, refetch: rR } = useFetch(() => vendaService.resumoGeral())
   const { data: membros }                            = useFetch(() => membroService.listar('ATIVO'))
   const { data: produtos }                          = useFetch(() => produtoService.listar())
+  const { data: configs }                           = useFetch(() => configuracaoService.listar())
+
+  const percentualRepasse = Number(configs?.PERCENTUAL_REPASSE ?? 70)
+  const labelRepasse      = `${percentualRepasse}%`
   const [modal, setModal]     = useState(false)
   const [form, setForm]       = useState(FORM)
   const [saving, setSaving]   = useState(false)
@@ -78,7 +83,7 @@ export default function Financeiro() {
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const repasse = (Number(form.valorTotal) || 0) * 0.70
+  const repasse = (Number(form.valorTotal) || 0) * (percentualRepasse / 100)
 
   if (lV || lR) return <Spinner />
 
@@ -100,7 +105,7 @@ export default function Financeiro() {
         </div>
       </div>
       <p className="text-gray-500 text-sm mb-5">
-        {isAdmin ? 'Vendas e repasses por produtor (70%)' : 'Seu extrato financeiro'}
+        {isAdmin ? `Vendas e repasses por produtor (${labelRepasse})` : 'Seu extrato financeiro'}
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
@@ -216,7 +221,7 @@ export default function Financeiro() {
             <input className="input" type="date" value={form.dataVenda} onChange={e => set('dataVenda', e.target.value)} />
           </FormGroup>
           <div className="bg-bg3 border border-border rounded-lg px-4 py-3 text-sm mb-4">
-            <span className="text-gray-400">Repasse ao produtor (70%): </span>
+            <span className="text-gray-400">Repasse ao produtor ({labelRepasse}): </span>
             <span className="text-warning font-mono font-medium">{fmtMoeda(repasse)}</span>
           </div>
           <button className="btn-primary w-full" onClick={salvar} disabled={saving}>
