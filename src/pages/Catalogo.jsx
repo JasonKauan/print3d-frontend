@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { produtoService } from '../services/produtoService'
 import { fmtMoeda } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
+import QRCode from 'qrcode'
 
 const FORM = { nome: '', descricao: '', preco: '', estoque: '', foto: null }
 
@@ -16,6 +17,25 @@ export default function Catalogo() {
   const [saving, setSaving]   = useState(false)
   const [toast, setToast]     = useState(null)
   const fotoRef               = useRef()
+
+  // QR Code
+  const [modalQr, setModalQr]   = useState(null) // produto
+  const [qrDataUrl, setQrDataUrl] = useState(null)
+
+  useEffect(() => {
+    if (!modalQr) return
+    const url = `${window.location.origin}/publico?produto=${modalQr.id}`
+    QRCode.toDataURL(url, { width: 256, margin: 2, color: { dark: '#ffffff', light: '#1a1f2e' } })
+      .then(setQrDataUrl)
+  }, [modalQr])
+
+  const baixarQr = () => {
+    if (!qrDataUrl) return
+    const a = document.createElement('a')
+    a.href = qrDataUrl
+    a.download = `qr-${modalQr.nome.replace(/\s+/g, '-').toLowerCase()}.png`
+    a.click()
+  }
 
   const abrirCriar = () => { setEdit(null); setForm(FORM); setPreview(null); setModal(true) }
   const abrirEditar = (p) => {
@@ -105,6 +125,8 @@ export default function Catalogo() {
                   </div>
                   <div className="border-t border-border mt-3 pt-3 flex gap-2">
                     <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(p)}>Editar</button>
+                    <button className="btn-ghost text-xs px-2" title="QR Code"
+                      onClick={() => { setModalQr(p); setQrDataUrl(null) }}>⬛ QR</button>
                     <button className="btn-danger" onClick={() => deletar(p)}>✕</button>
                   </div>
                 </div>
@@ -156,6 +178,27 @@ export default function Catalogo() {
           onConfirmar={confirmarDeletar}
           onCancelar={() => setConfirmar(null)}
         />
+      )}
+
+      {/* Modal QR Code */}
+      {modalQr && (
+        <Modal title={`QR Code — ${modalQr.nome}`} onClose={() => setModalQr(null)}>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {qrDataUrl
+              ? <img src={qrDataUrl} alt="QR Code" className="rounded-xl w-48 h-48" />
+              : <div className="w-48 h-48 bg-bg3 rounded-xl flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-border border-t-accent rounded-full animate-spin" />
+                </div>
+            }
+            <p className="text-xs text-gray-500 text-center px-4">
+              Aponta para a vitrine pública do produto.<br />
+              Ideal para etiquetas e embalagens.
+            </p>
+            <button className="btn-primary w-full" onClick={baixarQr} disabled={!qrDataUrl}>
+              ⬇ Baixar PNG
+            </button>
+          </div>
+        </Modal>
       )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

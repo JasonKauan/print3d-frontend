@@ -11,6 +11,7 @@ import Impressoes from './pages/Impressoes'
 import Impressoras from './pages/Impressoras'
 import Filamentos from './pages/Filamentos'
 import Catalogo from './pages/Catalogo'
+import CatalogoPublico from './pages/CatalogoPublico'
 import Financeiro from './pages/Financeiro'
 import Perfil from './pages/Perfil'
 import Producao from './pages/Producao'
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/setup"          element={<Setup />} />
       <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
       <Route path="/resetar-senha"  element={<ResetarSenha />} />
+      <Route path="/publico"        element={<CatalogoPublico />} />
 
       <Route path="/"            element={<RotaProtegida><Dashboard /></RotaProtegida>} />
       <Route path="/impressoes"  element={<RotaProtegida><Impressoes /></RotaProtegida>} />
