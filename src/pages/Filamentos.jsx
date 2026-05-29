@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast, StatCard } from '../components/common'
 import { filamentoService } from '../services/filamentoService'
 import { fmtMoeda } from '../utils/formatters'
@@ -24,7 +24,14 @@ export default function Filamentos() {
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
   const { data: filamentos, loading, refetch } = useFetch(() => filamentoService.listar())
-  const { data: totalData } = useFetch(() => filamentoService.totalInvestido())
+  const { data: totalData }    = useFetch(() => filamentoService.totalInvestido())
+  const { data: analyticsData } = useFetch(() => isAdmin ? filamentoService.analytics() : Promise.resolve({ data: [] }))
+
+  // Mapa filamentoId → analytics
+  const analyticsMap = {}
+  analyticsData?.forEach?.(a => { analyticsMap[a.id] = a })
+
+  const [abaAtiva, setAbaAtiva] = useState('rolos') // rolos | comparativo
 
   const [modal, setModal]         = useState(false)
   const [confirmar, setConfirmar] = useState(null)
@@ -90,7 +97,7 @@ export default function Filamentos() {
 
       {/* Stats */}
       {isAdmin && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <StatCard label="Total de rolos" value={filamentos?.length ?? 0} />
           <StatCard label="Disponíveis"
             value={filamentos?.filter(f => f.status === 'DISPONIVEL').length ?? 0}
@@ -104,11 +111,94 @@ export default function Filamentos() {
         </div>
       )}
 
+      {/* Alerta de sugestão de compra */}
+      {isAdmin && analyticsData?.some?.(a => a.sugerirCompra) && (
+        <div className="bg-amber-900/20 border border-warning rounded-xl px-4 py-3 mb-4 flex items-start gap-3">
+          <span className="text-warning text-lg shrink-0">⚠️</span>
+          <div>
+            <p className="text-sm font-medium text-warning">Sugestão de compra</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {analyticsData.filter(a => a.sugerirCompra).map(a =>
+                `${a.nome} (${a.mesesRestantes !== null ? `~${a.mesesRestantes} mês` : 'sem histórico'})`
+              ).join(', ')} — estoque baixo baseado no consumo médio.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Abas — só admin vê comparativo */}
+      {isAdmin && (
+        <div className="flex gap-1 mb-5 border-b border-border">
+          {[['rolos', 'Rolos'], ['comparativo', 'Comparativo de custo']].map(([key, label]) => (
+            <button key={key} onClick={() => setAbaAtiva(key)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                abaAtiva === key
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? <Spinner /> : filamentos?.length === 0
         ? <Empty text="Nenhum filamento cadastrado ainda" />
-        : (
+        : abaAtiva === 'comparativo' ? (
+          /* ── Aba Comparativo ── */
+          <div className="card p-0 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="th">Filamento</th>
+                  <th className="th">Tipo</th>
+                  <th className="th text-right">Custo/g</th>
+                  <th className="th text-right">Disponível</th>
+                  <th className="th text-right hidden sm:table-cell">Consumo/mês</th>
+                  <th className="th text-right hidden md:table-cell">Meses restantes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...(analyticsData ?? [])]
+                  .sort((a, b) => Number(a.custoPorGrama) - Number(b.custoPorGrama))
+                  .map((a, i) => (
+                    <tr key={a.id} className={i % 2 === 0 ? '' : 'bg-bg3/40'}>
+                      <td className="td font-medium">
+                        <div className="flex items-center gap-2">
+                          {a.sugerirCompra && <span title="Comprar em breve">⚠️</span>}
+                          {a.nome}
+                          {a.cor && <span className="text-xs text-gray-500">· {a.cor}</span>}
+                        </div>
+                      </td>
+                      <td className="td text-gray-400">{a.tipo || '—'}</td>
+                      <td className="td text-right font-mono text-warning">
+                        R$ {Number(a.custoPorGrama).toFixed(4)}
+                      </td>
+                      <td className="td text-right">{Number(a.pesoDisponivel).toFixed(0)}g</td>
+                      <td className="td text-right hidden sm:table-cell text-gray-400">
+                        {Number(a.consumoMedioMensal) > 0
+                          ? `${Number(a.consumoMedioMensal).toFixed(0)}g`
+                          : '—'}
+                      </td>
+                      <td className="td text-right hidden md:table-cell">
+                        {a.mesesRestantes !== null
+                          ? <span className={Number(a.mesesRestantes) <= 2 ? 'text-danger font-medium' : 'text-success'}>
+                              ~{a.mesesRestantes} mês
+                            </span>
+                          : <span className="text-gray-600">—</span>
+                        }
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* ── Aba Rolos ── */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filamentos?.map(f => (
+            {filamentos?.map(f => {
+              const analytics = analyticsMap[f.id]
+              return (
               <div key={f.id} className="card p-0 overflow-hidden hover:border-accent transition-colors">
                 {/* Header */}
                 <div className="px-4 py-3 bg-bg3 flex justify-between items-start">
@@ -118,7 +208,12 @@ export default function Filamentos() {
                       {[f.marca, f.tipo, f.cor].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <span className={STATUS_COR[f.status]}>{STATUS_LABEL[f.status]}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={STATUS_COR[f.status]}>{STATUS_LABEL[f.status]}</span>
+                    {analytics?.sugerirCompra && (
+                      <span className="badge-amber text-[10px]">⚠️ Comprar</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-4 space-y-3">
@@ -154,6 +249,14 @@ export default function Filamentos() {
                     </div>
                   </div>
 
+                  {/* Analytics inline — consumo médio */}
+                  {isAdmin && analytics && Number(analytics.consumoMedioMensal) > 0 && (
+                    <div className="text-xs text-gray-500 flex justify-between">
+                      <span>Consumo médio</span>
+                      <span className="font-mono">{Number(analytics.consumoMedioMensal).toFixed(0)}g/mês</span>
+                    </div>
+                  )}
+
                   {/* Ações admin */}
                   {isAdmin && (
                     <div className="flex gap-2 pt-1 border-t border-border">
@@ -167,7 +270,8 @@ export default function Filamentos() {
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

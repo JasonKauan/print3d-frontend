@@ -8,4 +8,5 @@ export const filamentoService = {
   atualizar:        (id, data) => api.put(`/filamentos/${id}`, data),
   deletar:          (id)     => api.delete(`/filamentos/${id}`),
   totalInvestido:   ()       => api.get('/filamentos/total-investido'),
+  analytics:        ()       => api.get('/filamentos/analytics'),
 }
