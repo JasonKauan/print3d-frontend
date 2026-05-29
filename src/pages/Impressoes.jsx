@@ -1,111 +1,66 @@
-import { useState } from 'react'
-import { Modal, Spinner, Empty, FormGroup, Toast } from '../components/common'
+import { Spinner, Empty } from '../components/common'
 import { impressaoService } from '../services/impressaoService'
-import { membroService } from '../services/membroService'
-import { produtoService } from '../services/produtoService'
-import { fmtMoeda } from '../utils/formatters'
+import { fmtData, fmtMoeda } from '../utils/formatters'
+import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
 
-const FORM = { membroId: '', produtoNome: '', quantidade: 1, tempoImpressao: '', dataImpressao: '', observacao: '' }
-
 export default function Impressoes() {
-  const { data: membros }               = useFetch(() => membroService.listar('ATIVO'))
-  const { data: produtos, loading: lC } = useFetch(() => produtoService.listar())
+  const { usuario } = useAuthStore()
+  const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
-  const [modal, setModal] = useState(false)
-  const [form, setForm]   = useState(FORM)
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast]   = useState(null)
-
-  const selecionarProduto = (p) => {
-    setForm({ ...FORM, produtoNome: p.nome })
-    setModal(true)
-  }
-
-  const salvar = async () => {
-    if (!form.membroId || !form.produtoNome) return
-    setSaving(true)
-    try {
-      await impressaoService.criar(form)
-      setToast({ msg: 'Impressão registrada!', type: 'success' })
-      setModal(false)
-    } catch (e) {
-      setToast({ msg: e.response?.data?.message || 'Erro ao salvar', type: 'error' })
-    } finally { setSaving(false) }
-  }
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const { data: impressoes, loading } = useFetch(() =>
+    isAdmin ? impressaoService.listar() : impressaoService.listarMembro()
+  )
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
+      <div className="mb-1">
         <h2 className="text-lg font-semibold">Impressões</h2>
       </div>
-      <p className="text-gray-500 text-sm mb-5">Clique em um produto para registrar uma impressão</p>
+      <p className="text-gray-500 text-sm mb-5">
+        {isAdmin ? 'Histórico de todas as impressões da entidade' : 'Suas impressões registradas'}
+      </p>
 
-      {lC ? <Spinner /> : produtos?.length === 0
-        ? <Empty text="Nenhum produto no catálogo ainda" />
+      {loading ? <Spinner /> : impressoes?.length === 0
+        ? <Empty text="Nenhuma impressão registrada ainda" />
         : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {produtos?.map(p => (
-              <div key={p.id}
-                className="card p-0 overflow-hidden hover:border-accent transition-colors cursor-pointer group"
-                onClick={() => selecionarProduto(p)}>
-                <div className="h-36 bg-bg3 relative overflow-hidden">
-                  {p.fotoUrl
-                    ? <img src={p.fotoUrl} alt={p.nome}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        onError={(e) => { e.target.style.display = 'none' }} />
-                    : <div className="flex items-center justify-center h-full text-gray-600 text-sm">sem foto</div>
-                  }
-                  <div className="absolute inset-0 bg-accent/0 group-hover:bg-accent/20 transition-colors flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-accent text-white text-xs px-3 py-1 rounded-full font-medium">
-                      + Registrar impressão
-                    </span>
-                  </div>
-                </div>
-                <div className="p-3">
-                  <p className="font-semibold text-sm mb-1">{p.nome}</p>
-                  <p className="text-gray-500 text-xs mb-2 line-clamp-1">{p.descricao || ''}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-accent font-mono text-xs">{fmtMoeda(p.preco)}</span>
-                    <span className="text-gray-500 text-xs">{p.estoque} em estoque</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="card p-0 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  {isAdmin && <th className="th">Membro</th>}
+                  <th className="th">Produto</th>
+                  <th className="th hidden sm:table-cell">Qtd</th>
+                  <th className="th hidden md:table-cell">Filamento</th>
+                  <th className="th hidden md:table-cell">Gramas</th>
+                  <th className="th hidden lg:table-cell">Custo fil.</th>
+                  <th className="th hidden sm:table-cell">Tempo</th>
+                  <th className="th">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {impressoes?.map(i => (
+                  <tr key={i.id}>
+                    {isAdmin && <td className="td font-medium">{i.membroNome}</td>}
+                    <td className="td">{i.produtoNome}</td>
+                    <td className="td hidden sm:table-cell text-gray-400">{i.quantidade} unid.</td>
+                    <td className="td hidden md:table-cell text-gray-400 text-xs">{i.filamentoNome || '—'}</td>
+                    <td className="td hidden md:table-cell text-gray-400 text-xs">
+                      {i.gramasUsadas ? `${Number(i.gramasUsadas).toFixed(1)}g` : '—'}
+                    </td>
+                    <td className="td hidden lg:table-cell font-mono text-xs text-warning">
+                      {i.custoFilamento ? fmtMoeda(i.custoFilamento) : '—'}
+                    </td>
+                    <td className="td hidden sm:table-cell text-gray-400 font-mono text-xs">
+                      {i.tempoImpressao || '—'}
+                    </td>
+                    <td className="td text-gray-400 text-sm">{fmtData(i.dataImpressao)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-
-      {modal && (
-        <Modal title={`Registrar — ${form.produtoNome}`} onClose={() => setModal(false)}>
-          <FormGroup label="Membro *">
-            <select className="input" value={form.membroId} onChange={e => set('membroId', e.target.value)}>
-              <option value="">Selecione...</option>
-              {membros?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-            </select>
-          </FormGroup>
-          <div className="grid grid-cols-2 gap-3">
-            <FormGroup label="Quantidade">
-              <input className="input" type="number" min="1" value={form.quantidade} onChange={e => set('quantidade', e.target.value)} />
-            </FormGroup>
-            <FormGroup label="Tempo de impressão">
-              <input className="input" value={form.tempoImpressao} onChange={e => set('tempoImpressao', e.target.value)} placeholder="ex: 4h30min" />
-            </FormGroup>
-          </div>
-          <FormGroup label="Data">
-            <input className="input" type="date" value={form.dataImpressao} onChange={e => set('dataImpressao', e.target.value)} />
-          </FormGroup>
-          <FormGroup label="Observações">
-            <textarea className="input min-h-[72px] resize-y" value={form.observacao} onChange={e => set('observacao', e.target.value)} placeholder="Informações adicionais..." />
-          </FormGroup>
-          <button className="btn-primary w-full mt-1" onClick={salvar} disabled={saving}>
-            {saving ? 'Salvando...' : 'Registrar impressão'}
-          </button>
-        </Modal>
-      )}
-
-      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }
