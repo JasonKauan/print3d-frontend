@@ -83,6 +83,20 @@ export default function Financeiro() {
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Quando produto ou quantidade muda, recalcula valorTotal automaticamente
+  const setProduto = (nomeProduto) => {
+    const produto = produtos?.find(p => p.nome === nomeProduto)
+    const novoTotal = produto ? (Number(produto.preco) * Number(form.quantidade)).toFixed(2) : form.valorTotal
+    setForm(f => ({ ...f, produtoNome: nomeProduto, valorTotal: novoTotal }))
+  }
+
+  const setQuantidade = (qtd) => {
+    const produto = produtos?.find(p => p.nome === form.produtoNome)
+    const novoTotal = produto ? (Number(produto.preco) * Number(qtd)).toFixed(2) : form.valorTotal
+    setForm(f => ({ ...f, quantidade: qtd, valorTotal: novoTotal }))
+  }
+
   const repasse = (Number(form.valorTotal) || 0) * (percentualRepasse / 100)
 
   if (lV || lR) return <Spinner />
@@ -196,25 +210,42 @@ export default function Financeiro() {
             </select>
           </FormGroup>
           <FormGroup label="Produto *">
-            <select
-              className="input"
-              value={form.produtoNome}
-              onChange={e => set('produtoNome', e.target.value)}
-            >
+            <select className="input" value={form.produtoNome} onChange={e => setProduto(e.target.value)}>
               <option value="">Selecione um produto...</option>
               {produtos?.map(p => (
-                <option key={p.id} value={p.nome}>
-                  {p.nome} — {fmtMoeda(p.preco)}
-                </option>
+                <option key={p.id} value={p.nome}>{p.nome}</option>
               ))}
             </select>
           </FormGroup>
+
+          {/* Dados do produto selecionado */}
+          {(() => {
+            const prod = produtos?.find(p => p.nome === form.produtoNome)
+            return prod ? (
+              <div className="bg-bg3 border border-border rounded-lg px-4 py-3 text-sm mb-3 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-gray-500">Preço unitário</p>
+                  <p className="font-mono text-accent font-medium">{fmtMoeda(prod.preco)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Em estoque</p>
+                  <p className="font-mono text-white">{prod.estoque} unid.</p>
+                </div>
+              </div>
+            ) : null
+          })()}
+
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="Quantidade">
-              <input className="input" type="number" min="1" value={form.quantidade} onChange={e => set('quantidade', e.target.value)} />
+              <input className="input" type="number" min="1" value={form.quantidade} onChange={e => setQuantidade(e.target.value)} />
             </FormGroup>
             <FormGroup label="Valor total (R$)">
-              <input className="input" type="number" step="0.01" value={form.valorTotal} onChange={e => set('valorTotal', e.target.value)} placeholder="0,00" />
+              <input
+                className="input bg-bg3 cursor-not-allowed opacity-70"
+                type="number" step="0.01"
+                value={form.valorTotal}
+                readOnly
+              />
             </FormGroup>
           </div>
           <FormGroup label="Data da venda">
