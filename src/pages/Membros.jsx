@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { membroService } from '../services/membroService'
+import { configuracaoService } from '../services/configuracaoService'
 import { fmtData } from '../utils/formatters'
 import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
@@ -16,6 +17,38 @@ export default function Membros() {
   const [form, setForm]           = useState(FORM_INICIAL)
   const [saving, setSaving]       = useState(false)
   const [toast, setToast]         = useState(null)
+
+  // Override de repasse por membro
+  const [modalRepasse, setModalRepasse] = useState(null) // { id, nome, percentual }
+  const [savingRepasse, setSavingRepasse] = useState(false)
+
+  const abrirRepasse = (m) => setModalRepasse({ id: m.id, nome: m.nome, percentual: '' })
+
+  const salvarRepasse = async () => {
+    const pct = parseFloat(modalRepasse.percentual)
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      setToast({ msg: 'Percentual deve ser entre 0 e 100.', type: 'error' }); return
+    }
+    setSavingRepasse(true)
+    try {
+      await configuracaoService.atualizarRepasseMembro(modalRepasse.id, pct)
+      setToast({ msg: `Repasse de ${modalRepasse.nome} definido em ${pct}%!`, type: 'success' })
+      setModalRepasse(null)
+    } catch (e) {
+      setToast({ msg: e.response?.data?.message || 'Erro ao salvar repasse.', type: 'error' })
+    } finally { setSavingRepasse(false) }
+  }
+
+  const removerRepasse = async () => {
+    setSavingRepasse(true)
+    try {
+      await configuracaoService.removerRepasseMembro(modalRepasse.id)
+      setToast({ msg: 'Repasse personalizado removido. Voltando ao padrão global.', type: 'info' })
+      setModalRepasse(null)
+    } catch (e) {
+      setToast({ msg: e.response?.data?.message || 'Erro ao remover repasse.', type: 'error' })
+    } finally { setSavingRepasse(false) }
+  }
 
   const abrirCriar = () => { setEdit(null); setForm(FORM_INICIAL); setModal(true) }
   const abrirEditar = (m) => {
@@ -109,6 +142,7 @@ export default function Membros() {
                   <td className="td">
                     <div className="flex gap-2">
                       <button className="btn-ghost text-xs px-2 py-1" onClick={() => abrirEditar(m)}>Editar</button>
+                      <button className="btn-ghost text-xs px-2 py-1 text-accent" title="Repasse personalizado" onClick={() => abrirRepasse(m)}>%</button>
                       <button className="btn-danger" onClick={() => setConfirmar({ id: m.id, nome: m.nome })}>✕</button>
                     </div>
                   </td>
@@ -167,6 +201,29 @@ export default function Membros() {
           onConfirmar={confirmarDeletar}
           onCancelar={() => setConfirmar(null)}
         />
+      )}
+
+      {/* Modal override de repasse */}
+      {modalRepasse && (
+        <Modal title={`Repasse — ${modalRepasse.nome}`} onClose={() => setModalRepasse(null)}>
+          <p className="text-gray-400 text-sm mb-4">
+            Define um percentual de repasse individual para este membro. Deixe vazio e remova para voltar ao padrão global.
+          </p>
+          <FormGroup label="Percentual de repasse (%)">
+            <input className="input" type="number" min="0" max="100" step="0.1"
+              value={modalRepasse.percentual}
+              onChange={e => setModalRepasse(r => ({ ...r, percentual: e.target.value }))}
+              placeholder="Ex: 65" />
+          </FormGroup>
+          <div className="flex gap-3 mt-2">
+            <button className="btn-ghost flex-1 text-sm" onClick={removerRepasse} disabled={savingRepasse}>
+              Remover override
+            </button>
+            <button className="btn-primary flex-1" onClick={salvarRepasse} disabled={savingRepasse}>
+              {savingRepasse ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

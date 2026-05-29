@@ -1,10 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { impressoraService } from '../services/impressoraService'
 import { filamentoService } from '../services/filamentoService'
 import { produtoService } from '../services/produtoService'
 import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
+
+// Timer ao vivo — recebe usoIniciadoEm (ISO string) e exibe hh:mm:ss
+function Timer({ desde }) {
+  const calc = () => {
+    const diff = Math.floor((Date.now() - new Date(desde)) / 1000)
+    const h = Math.floor(diff / 3600)
+    const m = Math.floor((diff % 3600) / 60)
+    const s = diff % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  const [tempo, setTempo] = useState(calc)
+  useEffect(() => {
+    const t = setInterval(() => setTempo(calc()), 1000)
+    return () => clearInterval(t)
+  }, [desde])
+  return <span className="font-mono text-warning text-xs">{tempo}</span>
+}
 
 const FORM_INICIAL = { nome: '', modelo: '', observacao: '' }
 const FINALIZAR_FORM = { tempoReal: '', gramasUsadas: '', observacao: '' }
@@ -33,6 +50,34 @@ export default function Impressoras() {
   const [usarForm, setUsarForm]             = useState({ produtoNome: '', quantidade: 1, filamentoId: '', gramasEstimadas: '' })
   const [saving, setSaving]                 = useState(false)
   const [toast, setToast]                   = useState(null)
+
+  // Fila de impressão
+  const [modalFila, setModalFila]           = useState(null) // impressora
+  const [fila, setFila]                     = useState([])
+  const [filaForm, setFilaForm]             = useState({ produtoNome: '', quantidade: 1, filamentoId: '' })
+  const [naFila, setNaFila]                 = useState({}) // { [impressoraId]: boolean }
+
+  const carregarFila = useCallback(async (imp) => {
+    const { data } = await impressoraService.verFila(imp.id)
+    setFila(data)
+    setModalFila(imp)
+  }, [])
+
+  useEffect(() => {
+    if (!impressoras || !usuario) return
+    const checks = {}
+    impressoras.forEach(imp => {
+      if (imp.status === 'OCUPADA') {
+        impressoraService.verFila(imp.id)
+          .then(({ data }) => {
+            const estou = data.some(e => e.membroNome === usuario.nome)
+            checks[imp.id] = estou
+            setNaFila(prev => ({ ...prev, [imp.id]: estou }))
+          })
+          .catch(() => {})
+      }
+    })
+  }, [impressoras, usuario])
 
   const abrirCriar = () => { setEditando(null); setForm(FORM_INICIAL); setModal(true) }
   const abrirEditar = (imp) => {
@@ -114,6 +159,39 @@ export default function Impressoras() {
     } finally { setConfirmar(null) }
   }
 
+  const entrarFila = async () => {
+    if (!filaForm.produtoNome) return
+    setSaving(true)
+    try {
+      await impressoraService.entrarFila(modalFila.id, {
+        produtoNome: filaForm.produtoNome,
+        quantidade: filaForm.quantidade,
+        filamentoId: filaForm.filamentoId || null,
+      })
+      setToast({ msg: 'Você entrou na fila! Será notificado quando a impressora for liberada.', type: 'success' })
+      setNaFila(prev => ({ ...prev, [modalFila.id]: true }))
+      const { data } = await impressoraService.verFila(modalFila.id)
+      setFila(data)
+      setFilaForm({ produtoNome: '', quantidade: 1, filamentoId: '' })
+    } catch (e) {
+      setToast({ msg: e.response?.data?.message || 'Erro ao entrar na fila.', type: 'error' })
+    } finally { setSaving(false) }
+  }
+
+  const sairFila = async (impressoraId) => {
+    try {
+      await impressoraService.sairFila(impressoraId)
+      setToast({ msg: 'Você saiu da fila.', type: 'info' })
+      setNaFila(prev => ({ ...prev, [impressoraId]: false }))
+      if (modalFila?.id === impressoraId) {
+        const { data } = await impressoraService.verFila(impressoraId)
+        setFila(data)
+      }
+    } catch (e) {
+      setToast({ msg: e.response?.data?.message || 'Erro ao sair da fila.', type: 'error' })
+    }
+  }
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const minhaImpressora = impressoras?.find(i => i.membroAtualNome === usuario?.nome)
 
@@ -164,11 +242,17 @@ export default function Impressoras() {
                               </span>
                           }
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-400">Usando agora</p>
                           <p className="text-sm font-medium">{euEstouUsando ? 'Você' : imp.membroAtualNome}</p>
                           {imp.produtoEmImpressao && (
                             <p className="text-xs text-gray-500">{imp.produtoEmImpressao} × {imp.quantidadeEmImpressao}</p>
+                          )}
+                          {imp.usoIniciadoEm && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-xs text-gray-500">Tempo:</span>
+                              <Timer desde={imp.usoIniciadoEm} />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -192,7 +276,29 @@ export default function Impressoras() {
                             ✓ Finalizar minha impressão
                           </button>
                         )}
-                        {imp.status === 'OCUPADA' && !euEstouUsando && (
+                        {imp.status === 'OCUPADA' && !euEstouUsando && !minhaImpressora && (
+                          <div className="space-y-1">
+                            {naFila[imp.id]
+                              ? (
+                                <div className="space-y-1">
+                                  <p className="text-xs text-accent text-center">✓ Você está na fila</p>
+                                  <button className="btn-ghost w-full text-xs text-danger"
+                                    onClick={() => sairFila(imp.id)}>Sair da fila</button>
+                                </div>
+                              ) : (
+                                <button className="btn-ghost w-full text-xs text-accent"
+                                  onClick={() => { carregarFila(imp); setFilaForm({ produtoNome: '', quantidade: 1, filamentoId: '' }) }}>
+                                  Entrar na fila
+                                </button>
+                              )
+                            }
+                            <button className="btn-ghost w-full text-xs"
+                              onClick={() => carregarFila(imp)}>
+                              Ver fila ({imp.membroAtualNome})
+                            </button>
+                          </div>
+                        )}
+                        {imp.status === 'OCUPADA' && !euEstouUsando && minhaImpressora && (
                           <p className="text-xs text-gray-500 text-center">Em uso por {imp.membroAtualNome}</p>
                         )}
                         {minhaImpressora && !euEstouUsando && imp.status === 'LIVRE' && (
@@ -341,6 +447,74 @@ export default function Impressoras() {
           onConfirmar={confirmarDeletar}
           onCancelar={() => setConfirmar(null)}
         />
+      )}
+
+      {/* Modal de fila */}
+      {modalFila && (
+        <Modal title={`Fila — ${modalFila.nome}`} onClose={() => setModalFila(null)}>
+          {fila.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Na fila agora</p>
+              <div className="space-y-2">
+                {fila.map((e, i) => (
+                  <div key={e.id} className="flex items-center gap-3 p-2 bg-bg3 rounded-lg">
+                    <span className="text-xs font-mono text-gray-500 w-5 text-center">{i + 1}º</span>
+                    <div className="w-7 h-7 rounded-full bg-bg border border-border relative overflow-hidden flex items-center justify-center shrink-0">
+                      {e.membroFoto
+                        ? <img src={e.membroFoto} alt={e.membroNome} className="absolute inset-0 w-full h-full object-cover" />
+                        : <span className="text-xs text-gray-500">{e.membroNome?.charAt(0)?.toUpperCase()}</span>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{e.membroNome}</p>
+                      {e.produtoNome && <p className="text-xs text-gray-500">{e.produtoNome} × {e.quantidade}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!naFila[modalFila.id] && (
+            <div className="border-t border-border pt-4 mt-2">
+              <p className="text-sm font-medium mb-3">Entrar na fila</p>
+              <FormGroup label="Produto a imprimir *">
+                <select className="input" value={filaForm.produtoNome}
+                  onChange={e => setFilaForm(f => ({ ...f, produtoNome: e.target.value }))}>
+                  <option value="">Selecione um produto...</option>
+                  {produtos?.map(p => <option key={p.id} value={p.nome}>{p.nome}</option>)}
+                </select>
+              </FormGroup>
+              <FormGroup label="Quantidade">
+                <input className="input" type="number" min="1" value={filaForm.quantidade}
+                  onChange={e => setFilaForm(f => ({ ...f, quantidade: e.target.value }))} />
+              </FormGroup>
+              <FormGroup label="Filamento (opcional)">
+                <select className="input" value={filaForm.filamentoId}
+                  onChange={e => setFilaForm(f => ({ ...f, filamentoId: e.target.value }))}>
+                  <option value="">Selecione...</option>
+                  {filamentos?.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.nome} {f.cor ? `— ${f.cor}` : ''} ({Number(f.pesoDisponivelGramas).toFixed(0)}g)
+                    </option>
+                  ))}
+                </select>
+              </FormGroup>
+              <button className="btn-primary w-full" onClick={entrarFila} disabled={saving}>
+                {saving ? 'Entrando...' : 'Entrar na fila'}
+              </button>
+            </div>
+          )}
+
+          {naFila[modalFila.id] && (
+            <div className="border-t border-border pt-4 mt-2 text-center">
+              <p className="text-sm text-accent mb-3">✓ Você está na fila desta impressora</p>
+              <button className="btn-ghost text-danger text-sm" onClick={() => sairFila(modalFila.id)}>
+                Sair da fila
+              </button>
+            </div>
+          )}
+        </Modal>
       )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

@@ -2,6 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import useAuthStore from '../../store/useAuthStore'
 import api from '../../services/api'
+import { Modal, FormGroup, Toast } from '../common'
+import { configuracaoService } from '../../services/configuracaoService'
 
 const TIPO_ICONE = {
   NOVA_VENDA:          '🛍️',
@@ -59,12 +61,18 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
-  const [fotoUrl, setFotoUrl]   = useState(null)
+  const [fotoUrl, setFotoUrl]         = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [notifs, setNotifs]     = useState([])
-  const [naoLidas, setNaoLidas] = useState(0)
-  const [sininho, setSininho]   = useState(false)
-  const sininhoRef              = useRef()
+  const [notifs, setNotifs]           = useState([])
+  const [naoLidas, setNaoLidas]       = useState(0)
+  const [sininho, setSininho]         = useState(false)
+  const sininhoRef                    = useRef()
+
+  // Modal de configurações
+  const [modalConfig, setModalConfig] = useState(false)
+  const [configs, setConfigs]         = useState({})
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [toastLayout, setToastLayout] = useState(null)
 
   useEffect(() => {
     api.get('/membros/me').then(r => setFotoUrl(r.data.fotoUrl)).catch(() => {})
@@ -110,6 +118,29 @@ export default function Layout({ children }) {
   const handleLogout = () => { logout(); navigate('/login') }
   const closeSidebar = () => setSidebarOpen(false)
 
+  const abrirConfigs = async () => {
+    const { data } = await configuracaoService.listar()
+    setConfigs({
+      NOME_ENTIDADE:           data.NOME_ENTIDADE           ?? 'Print3D',
+      PERCENTUAL_REPASSE:      data.PERCENTUAL_REPASSE      ?? '70',
+      MULTIPLICADOR_INTERNO:   data.MULTIPLICADOR_INTERNO   ?? '1.5',
+      MULTIPLICADOR_EXTERNO:   data.MULTIPLICADOR_EXTERNO   ?? '2.5',
+      ALERTA_FILAMENTO_GRAMAS: data.ALERTA_FILAMENTO_GRAMAS ?? '100',
+    })
+    setModalConfig(true)
+  }
+
+  const salvarConfigs = async () => {
+    setSavingConfig(true)
+    try {
+      await configuracaoService.atualizar(configs)
+      setToastLayout({ msg: 'Configurações salvas!', type: 'success' })
+      setModalConfig(false)
+    } catch {
+      setToastLayout({ msg: 'Erro ao salvar configurações.', type: 'error' })
+    } finally { setSavingConfig(false) }
+  }
+
   const navItems = [
     { to: '/',            label: 'Dashboard',   icon: ICONS.dashboard              },
     { to: '/admin',       label: 'Painel ADM',  icon: ICONS.admin,  adminOnly: true },
@@ -140,7 +171,7 @@ export default function Layout({ children }) {
           ))}
       </nav>
 
-      {/* Footer da sidebar — perfil + sair */}
+      {/* Footer da sidebar — perfil + configurações (admin) + sair */}
       <div className="px-3 py-4 border-t border-border space-y-1">
         <NavLink to="/perfil" onClick={closeSidebar}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-bg3 transition-all">
@@ -157,6 +188,19 @@ export default function Layout({ children }) {
             <p className="text-xs text-gray-500 truncate">{usuario?.role?.toLowerCase()}</p>
           </div>
         </NavLink>
+
+        {isAdmin && (
+          <button onClick={abrirConfigs}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-bg3 transition-all">
+            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Configurações</span>
+          </button>
+        )}
+
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-danger hover:bg-bg3 transition-all">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -259,6 +303,45 @@ export default function Layout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Modal de configurações globais */}
+      {modalConfig && (
+        <Modal title="Configurações do sistema" onClose={() => setModalConfig(false)}>
+          <FormGroup label="Nome da entidade">
+            <input className="input" value={configs.NOME_ENTIDADE}
+              onChange={e => setConfigs(c => ({ ...c, NOME_ENTIDADE: e.target.value }))} />
+          </FormGroup>
+          <FormGroup label="Repasse global (%)">
+            <input className="input" type="number" min="0" max="100" step="0.1"
+              value={configs.PERCENTUAL_REPASSE}
+              onChange={e => setConfigs(c => ({ ...c, PERCENTUAL_REPASSE: e.target.value }))} />
+          </FormGroup>
+          <div className="grid grid-cols-2 gap-3">
+            <FormGroup label="Multiplicador interno">
+              <input className="input" type="number" min="0" step="0.1"
+                value={configs.MULTIPLICADOR_INTERNO}
+                onChange={e => setConfigs(c => ({ ...c, MULTIPLICADOR_INTERNO: e.target.value }))} />
+            </FormGroup>
+            <FormGroup label="Multiplicador externo">
+              <input className="input" type="number" min="0" step="0.1"
+                value={configs.MULTIPLICADOR_EXTERNO}
+                onChange={e => setConfigs(c => ({ ...c, MULTIPLICADOR_EXTERNO: e.target.value }))} />
+            </FormGroup>
+          </div>
+          <FormGroup label="Alerta filamento baixo (gramas)">
+            <input className="input" type="number" min="0" step="1"
+              value={configs.ALERTA_FILAMENTO_GRAMAS}
+              onChange={e => setConfigs(c => ({ ...c, ALERTA_FILAMENTO_GRAMAS: e.target.value }))} />
+          </FormGroup>
+          <button className="btn-primary w-full mt-2" onClick={salvarConfigs} disabled={savingConfig}>
+            {savingConfig ? 'Salvando...' : 'Salvar configurações'}
+          </button>
+        </Modal>
+      )}
+
+      {toastLayout && (
+        <Toast message={toastLayout.msg} type={toastLayout.type} onClose={() => setToastLayout(null)} />
+      )}
     </div>
   )
 }

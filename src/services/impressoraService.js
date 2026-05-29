@@ -9,4 +9,7 @@ export const impressoraService = {
   iniciarUso:    (id, data)   => api.post(`/impressoras/${id}/usar`, data),
   finalizarUso:  (id, data)   => api.post(`/impressoras/${id}/finalizar`, data),
   alterarStatus: (id, status) => api.patch(`/impressoras/${id}/status`, { status }),
+  verFila:       (id)         => api.get(`/impressoras/${id}/fila`),
+  entrarFila:    (id, data)   => api.post(`/impressoras/${id}/fila`, data),
+  sairFila:      (id)         => api.delete(`/impressoras/${id}/fila`),
 }
