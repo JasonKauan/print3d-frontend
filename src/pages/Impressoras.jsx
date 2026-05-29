@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { impressoraService } from '../services/impressoraService'
 import { filamentoService } from '../services/filamentoService'
+import { produtoService } from '../services/produtoService'
 import useAuthStore from '../store/useAuthStore'
 import useFetch from '../hooks/useFetch'
 
@@ -20,6 +21,7 @@ export default function Impressoras() {
 
   const { data: impressoras, loading, refetch } = useFetch(() => impressoraService.listar())
   const { data: filamentos }                     = useFetch(() => filamentoService.listarDisponiveis())
+  const { data: produtos }                       = useFetch(() => produtoService.listar())
 
   const [modal, setModal]                   = useState(false)
   const [modalUsar, setModalUsar]           = useState(null)
@@ -255,9 +257,15 @@ export default function Impressoras() {
             A impressora será marcada como ocupada imediatamente.
           </p>
           <FormGroup label="Produto a imprimir *">
-            <input className="input" value={usarForm.produtoNome}
-              onChange={e => setUsarForm(f => ({ ...f, produtoNome: e.target.value }))}
-              placeholder="Nome do produto" />
+            <select className="input" value={usarForm.produtoNome}
+              onChange={e => setUsarForm(f => ({ ...f, produtoNome: e.target.value }))}>
+              <option value="">Selecione um produto...</option>
+              {produtos?.map(p => (
+                <option key={p.id} value={p.nome}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
           </FormGroup>
           <FormGroup label="Quantidade">
             <input className="input" type="number" min="1" value={usarForm.quantidade}
