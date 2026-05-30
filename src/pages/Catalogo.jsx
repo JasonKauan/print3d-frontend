@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Modal, ModalConfirm, Spinner, Empty, FormGroup, Toast } from '../components/common'
 import { produtoService } from '../services/produtoService'
+import { configuracaoService } from '../services/configuracaoService'
 import { fmtMoeda } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
 import QRCode from 'qrcode'
@@ -9,18 +10,46 @@ const FORM = { nome: '', descricao: '', preco: '', estoque: '', categoria: '', f
 
 export default function Catalogo() {
   const { data: produtos, loading, refetch } = useFetch(() => produtoService.listar())
-  const { data: stats } = useFetch(() => produtoService.stats())
-  const [modal, setModal]     = useState(false)
+  const { data: stats }    = useFetch(() => produtoService.stats())
+  const { data: configs, refetch: refetchConfigs } = useFetch(() => configuracaoService.listar())
+
+  const [modal, setModal]         = useState(false)
   const [confirmar, setConfirmar] = useState(null)
-  const [editando, setEdit]   = useState(null)
-  const [form, setForm]       = useState(FORM)
-  const [preview, setPreview] = useState(null)
-  const [saving, setSaving]   = useState(false)
-  const [toast, setToast]     = useState(null)
-  const fotoRef               = useRef()
+  const [editando, setEdit]       = useState(null)
+  const [form, setForm]           = useState(FORM)
+  const [preview, setPreview]     = useState(null)
+  const [saving, setSaving]       = useState(false)
+  const [toast, setToast]         = useState(null)
+  const fotoRef                   = useRef()
+
+  // Categorias — lidas das configs (CSV) e mescladas com as dos produtos existentes
+  const categoriasConfig = (configs?.CATEGORIAS_PRODUTO || '')
+    .split(',').map(c => c.trim()).filter(Boolean)
+  const categoriasProdutos = [...new Set((produtos ?? []).map(p => p.categoria).filter(Boolean))]
+  const todasCategorias = [...new Set([...categoriasConfig, ...categoriasProdutos])].sort()
+
+  // Modal gerenciar categorias
+  const [modalCats, setModalCats]   = useState(false)
+  const [novaCategoria, setNovaCategoria] = useState('')
+
+  const salvarCategorias = async (lista) => {
+    await configuracaoService.atualizar({ CATEGORIAS_PRODUTO: lista.join(',') })
+    refetchConfigs()
+  }
+
+  const adicionarCategoria = async () => {
+    const nova = novaCategoria.trim()
+    if (!nova || todasCategorias.includes(nova)) return
+    await salvarCategorias([...todasCategorias, nova])
+    setNovaCategoria('')
+  }
+
+  const removerCategoria = async (cat) => {
+    await salvarCategorias(todasCategorias.filter(c => c !== cat))
+  }
 
   // QR Code
-  const [modalQr, setModalQr]   = useState(null) // produto
+  const [modalQr, setModalQr]     = useState(null)
   const [qrDataUrl, setQrDataUrl] = useState(null)
 
   useEffect(() => {
@@ -46,7 +75,7 @@ export default function Catalogo() {
     setModal(true)
   }
 
-  // Edição inline de categoria
+  // Edição inline de categoria — agora usa select
   const [editCategoria, setEditCategoria] = useState(null) // { id, valor }
   const salvarCategoria = async () => {
     try {
@@ -58,12 +87,14 @@ export default function Catalogo() {
     }
   }
 
-  // Filtro por categoria
+  // Filtro
   const [filtroCategoria, setFiltroCategoria] = useState('Todas')
-  const categorias = ['Todas', ...new Set((produtos ?? []).map(p => p.categoria || 'Sem categoria'))]
+  const categoriasFiltro = ['Todas', ...todasCategorias, ...(produtos?.some(p => !p.categoria) ? ['Sem categoria'] : [])]
   const produtosFiltrados = filtroCategoria === 'Todas'
     ? (produtos ?? [])
-    : (produtos ?? []).filter(p => (p.categoria || 'Sem categoria') === filtroCategoria)
+    : filtroCategoria === 'Sem categoria'
+      ? (produtos ?? []).filter(p => !p.categoria)
+      : (produtos ?? []).filter(p => p.categoria === filtroCategoria)
 
   const handleFoto = (e) => {
     const file = e.target.files[0]
@@ -109,14 +140,19 @@ export default function Catalogo() {
     <div>
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-lg font-semibold">Catálogo</h2>
-        <button className="btn-primary" onClick={abrirCriar}>+ Produto</button>
+        <div className="flex gap-2">
+          <button className="btn-ghost text-xs px-3 py-1.5" onClick={() => setModalCats(true)}>
+            🏷️ Categorias
+          </button>
+          <button className="btn-primary" onClick={abrirCriar}>+ Produto</button>
+        </div>
       </div>
       <p className="text-gray-500 text-sm mb-4">Todos os produtos com estoque e valor</p>
 
       {/* Filtro por categoria */}
-      {categorias.length > 1 && (
+      {categoriasFiltro.length > 1 && (
         <div className="flex flex-wrap gap-2 mb-5">
-          {categorias.map(cat => (
+          {categoriasFiltro.map(cat => (
             <button key={cat}
               onClick={() => setFiltroCategoria(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all border ${
@@ -161,14 +197,17 @@ export default function Catalogo() {
                     {/* Categoria com edição inline */}
                     {editCategoria?.id === p.id ? (
                       <div className="flex items-center gap-1">
-                        <input
+                        <select
                           autoFocus
-                          className="input text-xs py-0.5 px-2 h-6 w-24"
+                          className="input text-xs py-0.5 px-2 h-6"
                           value={editCategoria.valor}
                           onChange={e => setEditCategoria(c => ({ ...c, valor: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') salvarCategoria(); if (e.key === 'Escape') setEditCategoria(null) }}
-                          placeholder="Categoria"
-                        />
+                        >
+                          <option value="">Sem categoria</option>
+                          {todasCategorias.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
                         <button onClick={salvarCategoria} className="text-success text-sm">✓</button>
                         <button onClick={() => setEditCategoria(null)} className="text-danger text-sm">✕</button>
                       </div>
@@ -240,8 +279,12 @@ export default function Catalogo() {
             </FormGroup>
           </div>
           <FormGroup label="Categoria">
-            <input className="input" value={form.categoria} onChange={e => set('categoria', e.target.value)}
-              placeholder="Ex: Miniaturas, Peças técnicas, Decoração..." />
+            <select className="input" value={form.categoria} onChange={e => set('categoria', e.target.value)}>
+              <option value="">Sem categoria</option>
+              {todasCategorias.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </FormGroup>
           <FormGroup label="Foto do produto">
             <div
@@ -288,6 +331,36 @@ export default function Catalogo() {
             </p>
             <button className="btn-primary w-full" onClick={baixarQr} disabled={!qrDataUrl}>
               ⬇ Baixar PNG
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal gerenciar categorias */}
+      {modalCats && (
+        <Modal title="Gerenciar categorias" onClose={() => setModalCats(false)}>
+          <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+            {todasCategorias.length === 0
+              ? <p className="text-gray-500 text-sm text-center py-4">Nenhuma categoria criada ainda.</p>
+              : todasCategorias.map(cat => (
+                <div key={cat} className="flex items-center justify-between bg-bg3 rounded-lg px-3 py-2">
+                  <span className="text-sm">{cat}</span>
+                  <button onClick={() => removerCategoria(cat)}
+                    className="text-danger text-xs hover:opacity-80">✕</button>
+                </div>
+              ))
+            }
+          </div>
+          <div className="flex gap-2 border-t border-border pt-4">
+            <input
+              className="input flex-1"
+              placeholder="Nova categoria..."
+              value={novaCategoria}
+              onChange={e => setNovaCategoria(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && adicionarCategoria()}
+            />
+            <button className="btn-primary px-4" onClick={adicionarCategoria}>
+              Adicionar
             </button>
           </div>
         </Modal>
