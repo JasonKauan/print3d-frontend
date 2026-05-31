@@ -70,7 +70,7 @@ export default function Catalogo() {
   const abrirCriar = () => { setEdit(null); setForm(FORM); setPreview(null); setModal(true) }
   const abrirEditar = (p) => {
     setEdit(p)
-    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, pesoGramas: p.pesoGramas || '', categoria: p.categoria || '', foto: null })
+    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, pesoGramas: p.pesoGramas ?? '', categoria: p.categoria || '', foto: null })
     setPreview(p.fotoUrl || null)
     setModal(true)
   }
@@ -276,8 +276,15 @@ export default function Catalogo() {
               <input className="input" type="number" min="0" value={form.estoque} onChange={e => set('estoque', e.target.value)} placeholder="0" />
             </FormGroup>
           </div>
-          <FormGroup label="Gramas por unidade">
-            <input className="input" type="number" step="0.1" min="0" value={form.pesoGramas} onChange={e => set('pesoGramas', e.target.value)} placeholder="Ex: 45.5g por peça" />
+          <FormGroup label={
+            editando && editando.pesoGramas > 0
+              ? `Gramas por unidade (atual: ${Number(editando.pesoGramas).toFixed(1)}g)`
+              : 'Gramas por unidade'
+          }>
+            <input className="input" type="number" step="0.1" min="0"
+              value={form.pesoGramas}
+              onChange={e => set('pesoGramas', e.target.value)}
+              placeholder="Ex: 45.5g por peça" />
           </FormGroup>
           <FormGroup label="Categoria">
             <select className="input" value={form.categoria} onChange={e => set('categoria', e.target.value)}>
