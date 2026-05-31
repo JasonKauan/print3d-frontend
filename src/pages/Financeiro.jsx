@@ -36,6 +36,14 @@ export default function Financeiro() {
 
   const salvar = async () => {
     if (!form.membroId || !form.produtoNome || !form.valorTotal) return
+
+    // Validação de estoque no frontend
+    const produto = produtos?.find(p => p.nome === form.produtoNome)
+    if (produto && produto.estoque < Number(form.quantidade)) {
+      setToast({ msg: `Estoque insuficiente! Disponível: ${produto.estoque} unid.`, type: 'error' })
+      return
+    }
+
     setSaving(true)
     try {
       await vendaService.criar(form)

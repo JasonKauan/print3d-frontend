@@ -201,6 +201,19 @@ export default function Impressoras() {
     ? (Number(usarForm.gramasEstimadas) * Number(filamentoSelecionado.custoPorGrama)).toFixed(2)
     : null
 
+  // Auto-calcular gramas ao mudar produto ou quantidade no modal de usar
+  const calcularGramas = (nomeProduto, qtd) => {
+    const prod = produtos?.find(p => p.nome === nomeProduto)
+    if (prod && prod.pesoGramas > 0) {
+      return (Number(prod.pesoGramas) * Number(qtd)).toFixed(1)
+    }
+    return ''
+  }
+
+  // Validação de filamento: gramas estimadas > disponível
+  const gramasExcedemFilamento = filamentoSelecionado && usarForm.gramasEstimadas
+    && Number(usarForm.gramasEstimadas) > Number(filamentoSelecionado.pesoDisponivelGramas)
+
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
@@ -370,18 +383,26 @@ export default function Impressoras() {
           </p>
           <FormGroup label="Produto a imprimir *">
             <select className="input" value={usarForm.produtoNome}
-              onChange={e => setUsarForm(f => ({ ...f, produtoNome: e.target.value }))}>
+              onChange={e => {
+                const nome = e.target.value
+                const gramas = calcularGramas(nome, usarForm.quantidade)
+                setUsarForm(f => ({ ...f, produtoNome: nome, gramasEstimadas: gramas }))
+              }}>
               <option value="">Selecione um produto...</option>
               {produtos?.map(p => (
                 <option key={p.id} value={p.nome}>
-                  {p.nome}
+                  {p.nome}{p.pesoGramas > 0 ? ` — ${Number(p.pesoGramas).toFixed(1)}g/unid.` : ''}
                 </option>
               ))}
             </select>
           </FormGroup>
           <FormGroup label="Quantidade">
             <input className="input" type="number" min="1" value={usarForm.quantidade}
-              onChange={e => setUsarForm(f => ({ ...f, quantidade: e.target.value }))} />
+              onChange={e => {
+                const qtd = e.target.value
+                const gramas = calcularGramas(usarForm.produtoNome, qtd)
+                setUsarForm(f => ({ ...f, quantidade: qtd, gramasEstimadas: gramas }))
+              }} />
           </FormGroup>
           <FormGroup label="Filamento (opcional)">
             <select className="input" value={usarForm.filamentoId}
@@ -396,18 +417,28 @@ export default function Impressoras() {
           </FormGroup>
           {usarForm.filamentoId && (
             <FormGroup label="Gramas estimadas">
-              <input className="input" type="number" step="0.1" value={usarForm.gramasEstimadas}
+              <input className={`input ${gramasExcedemFilamento ? 'border-danger' : ''}`}
+                type="number" step="0.1" value={usarForm.gramasEstimadas}
                 onChange={e => setUsarForm(f => ({ ...f, gramasEstimadas: e.target.value }))}
                 placeholder="Ex: 45.5" />
             </FormGroup>
           )}
-          {custoEstimado && (
+          {gramasExcedemFilamento && (
+            <div className="bg-red-900/20 border border-danger rounded-lg px-4 py-3 text-sm mb-3">
+              <p className="text-danger font-medium">⚠️ Filamento insuficiente!</p>
+              <p className="text-gray-400 text-xs mt-1">
+                Você precisa de {Number(usarForm.gramasEstimadas).toFixed(1)}g mas o filamento tem apenas {Number(filamentoSelecionado.pesoDisponivelGramas).toFixed(1)}g disponíveis.
+                Você é um tapado? Troque o filamento ou reduza a quantidade.
+              </p>
+            </div>
+          )}
+          {custoEstimado && !gramasExcedemFilamento && (
             <div className="bg-bg3 border border-border rounded-lg px-4 py-3 text-sm mb-3">
               <span className="text-gray-400">Custo estimado de filamento: </span>
               <span className="text-warning font-mono font-medium">R$ {custoEstimado}</span>
             </div>
           )}
-          <button className="btn-primary w-full" onClick={iniciarUso} disabled={saving}>
+          <button className="btn-primary w-full" onClick={iniciarUso} disabled={saving || gramasExcedemFilamento}>
             {saving ? 'Iniciando...' : 'Iniciar uso'}
           </button>
         </Modal>

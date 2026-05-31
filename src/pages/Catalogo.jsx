@@ -6,7 +6,7 @@ import { fmtMoeda } from '../utils/formatters'
 import useFetch from '../hooks/useFetch'
 import QRCode from 'qrcode'
 
-const FORM = { nome: '', descricao: '', preco: '', estoque: '', categoria: '', foto: null }
+const FORM = { nome: '', descricao: '', preco: '', estoque: '', pesoGramas: '', categoria: '', foto: null }
 
 export default function Catalogo() {
   const { data: produtos, loading, refetch } = useFetch(() => produtoService.listar())
@@ -70,7 +70,7 @@ export default function Catalogo() {
   const abrirCriar = () => { setEdit(null); setForm(FORM); setPreview(null); setModal(true) }
   const abrirEditar = (p) => {
     setEdit(p)
-    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, categoria: p.categoria || '', foto: null })
+    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, pesoGramas: p.pesoGramas || '', categoria: p.categoria || '', foto: null })
     setPreview(p.fotoUrl || null)
     setModal(true)
   }
@@ -227,23 +227,21 @@ export default function Catalogo() {
                     )}
                   </div>
                   <p className="text-gray-500 text-xs mb-3 line-clamp-2">{p.descricao || ''}</p>
-                  {/* Stats de consumo */}
-                  {s && Number(s.totalGramas) > 0 && (
-                    <div className="grid grid-cols-3 gap-1 mt-2 mb-1">
+                  {/* Gramas por unidade + total produzido */}
+                  <div className="grid grid-cols-2 gap-1 mt-2 mb-1">
+                    {p.pesoGramas > 0 && (
                       <div className="bg-bg3 rounded-lg p-1.5 text-center">
-                        <p className="text-[10px] text-gray-500">Impressões</p>
-                        <p className="text-xs font-mono font-medium">{s.totalImpressoes}</p>
+                        <p className="text-[10px] text-gray-500">Gramas/unid.</p>
+                        <p className="text-xs font-mono font-medium text-warning">{Number(p.pesoGramas).toFixed(1)}g</p>
                       </div>
+                    )}
+                    {s && Number(s.totalImpressoes) > 0 && (
                       <div className="bg-bg3 rounded-lg p-1.5 text-center">
-                        <p className="text-[10px] text-gray-500">Gramas</p>
-                        <p className="text-xs font-mono font-medium text-warning">{Number(s.totalGramas).toFixed(0)}g</p>
+                        <p className="text-[10px] text-gray-500">Já produzidas</p>
+                        <p className="text-xs font-mono font-medium">{s.totalPecas} unid.</p>
                       </div>
-                      <div className="bg-bg3 rounded-lg p-1.5 text-center">
-                        <p className="text-[10px] text-gray-500">Custo fil.</p>
-                        <p className="text-xs font-mono font-medium text-warning">{fmtMoeda(s.totalCustoFilamento)}</p>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-accent font-mono text-sm">{fmtMoeda(p.preco)}</span>
@@ -278,6 +276,9 @@ export default function Catalogo() {
               <input className="input" type="number" min="0" value={form.estoque} onChange={e => set('estoque', e.target.value)} placeholder="0" />
             </FormGroup>
           </div>
+          <FormGroup label="Gramas por unidade">
+            <input className="input" type="number" step="0.1" min="0" value={form.pesoGramas} onChange={e => set('pesoGramas', e.target.value)} placeholder="Ex: 45.5g por peça" />
+          </FormGroup>
           <FormGroup label="Categoria">
             <select className="input" value={form.categoria} onChange={e => set('categoria', e.target.value)}>
               <option value="">Sem categoria</option>
