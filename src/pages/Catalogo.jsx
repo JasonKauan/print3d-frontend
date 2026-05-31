@@ -70,7 +70,7 @@ export default function Catalogo() {
   const abrirCriar = () => { setEdit(null); setForm(FORM); setPreview(null); setModal(true) }
   const abrirEditar = (p) => {
     setEdit(p)
-    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, pesoGramas: p.pesoGramas ?? '', categoria: p.categoria || '', foto: null })
+    setForm({ nome: p.nome, descricao: p.descricao || '', preco: p.preco, estoque: p.estoque, pesoGramas: '', categoria: p.categoria || '', foto: null })
     setPreview(p.fotoUrl || null)
     setModal(true)
   }
@@ -227,25 +227,14 @@ export default function Catalogo() {
                     )}
                   </div>
                   <p className="text-gray-500 text-xs mb-3 line-clamp-2">{p.descricao || ''}</p>
-                  {/* Gramas por unidade + total produzido */}
-                  <div className="grid grid-cols-2 gap-1 mt-2 mb-1">
-                    {p.pesoGramas > 0 && (
-                      <div className="bg-bg3 rounded-lg p-1.5 text-center">
-                        <p className="text-[10px] text-gray-500">Gramas/unid.</p>
-                        <p className="text-xs font-mono font-medium text-warning">{Number(p.pesoGramas).toFixed(1)}g</p>
-                      </div>
-                    )}
-                    {s && Number(s.totalImpressoes) > 0 && (
-                      <div className="bg-bg3 rounded-lg p-1.5 text-center">
-                        <p className="text-[10px] text-gray-500">Já produzidas</p>
-                        <p className="text-xs font-mono font-medium">{s.totalPecas} unid.</p>
-                      </div>
-                    )}
-                  </div>
-
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-accent font-mono text-sm">{fmtMoeda(p.preco)}</span>
-                    <span className="text-gray-500 text-xs">{p.estoque} em estoque</span>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {p.pesoGramas > 0 && (
+                        <span className="text-warning font-mono">{Number(p.pesoGramas).toFixed(1)}g/unid.</span>
+                      )}
+                      <span>{p.estoque} em estoque</span>
+                    </div>
                   </div>
                   <div className="border-t border-border mt-3 pt-3 flex gap-2">
                     <button className="btn-ghost text-xs flex-1" onClick={() => abrirEditar(p)}>Editar</button>
@@ -284,7 +273,7 @@ export default function Catalogo() {
             <input className="input" type="number" step="0.1" min="0"
               value={form.pesoGramas}
               onChange={e => set('pesoGramas', e.target.value)}
-              placeholder="Ex: 45.5g por peça" />
+              placeholder={editando && editando.pesoGramas > 0 ? `${Number(editando.pesoGramas).toFixed(1)}g por peça` : 'Ex: 45.5g por peça'} />
           </FormGroup>
           <FormGroup label="Categoria">
             <select className="input" value={form.categoria} onChange={e => set('categoria', e.target.value)}>
