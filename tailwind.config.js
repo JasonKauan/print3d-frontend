@@ -4,15 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg:      '#0f1117',
-        bg2:     '#181c27',
-        bg3:     '#1e2333',
-        border:  '#2a3050',
-        accent:  '#4f7cff',
-        accent2: '#7c5cff',
-        success: '#2ecc8a',
-        danger:  '#ff5c7a',
-        warning: '#ffb547',
+        bg:      'rgb(var(--color-bg) / <alpha-value>)',
+        bg2:     'rgb(var(--color-bg2) / <alpha-value>)',
+        bg3:     'rgb(var(--color-bg3) / <alpha-value>)',
+        border:  'rgb(var(--color-border) / <alpha-value>)',
+        accent:  'rgb(var(--color-accent) / <alpha-value>)',
+        accent2: 'rgb(var(--color-accent2) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        danger:  'rgb(var(--color-danger) / <alpha-value>)',
+        warning: 'rgb(var(--color-warning) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['DM Sans', 'sans-serif'],

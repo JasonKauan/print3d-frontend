@@ -7,6 +7,7 @@ import { configuracaoService } from '../../services/configuracaoService'
 import { useNomeEntidade } from '../../hooks/useNomeEntidade'
 import { setNomeEntidade as setPdfNome } from '../../utils/gerarPdf'
 import { setNomeEntidade as setExcelNome } from '../../utils/gerarExcel'
+import useThemeStore, { TEMAS } from '../../store/useThemeStore'
 
 const TIPO_ICONE = {
   NOVA_VENDA:          '🛍️',
@@ -64,6 +65,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
   const nomeEntidade = useNomeEntidade()
+  const { tema, setTema } = useThemeStore()
 
   // Propaga o nome da entidade para os geradores de PDF e Excel
   useEffect(() => {
@@ -210,6 +212,22 @@ export default function Layout({ children }) {
             <span>Configurações</span>
           </button>
         )}
+
+        {/* Seletor de temas */}
+        <div className="px-3 py-2 flex items-center gap-2">
+          <span className="text-xs text-gray-600 flex-1">Tema</span>
+          {TEMAS.map(t => (
+            <button
+              key={t.id}
+              title={t.label}
+              onClick={() => setTema(t.id)}
+              className={`w-5 h-5 rounded-full transition-all shrink-0 ${
+                tema === t.id ? 'ring-2 ring-white ring-offset-1 ring-offset-bg2 scale-110' : 'opacity-60 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: t.cor }}
+            />
+          ))}
+        </div>
 
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-danger hover:bg-bg3 transition-all">

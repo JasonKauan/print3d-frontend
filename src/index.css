@@ -2,6 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Tema: Navy (padrão) ─────────────────────────────── */
+:root, [data-theme="navy"] {
+  --color-bg:      15 17 23;
+  --color-bg2:     24 28 39;
+  --color-bg3:     30 35 51;
+  --color-border:  42 48 80;
+  --color-accent:  79 124 255;
+  --color-accent2: 124 92 255;
+  --color-success: 46 204 138;
+  --color-danger:  255 92 122;
+  --color-warning: 255 181 71;
+}
+
+/* ── Tema: Midnight ──────────────────────────────────── */
+[data-theme="midnight"] {
+  --color-bg:      0 0 0;
+  --color-bg2:     13 13 13;
+  --color-bg3:     22 22 22;
+  --color-border:  40 40 40;
+  --color-accent:  79 124 255;
+  --color-accent2: 124 92 255;
+  --color-success: 46 204 138;
+  --color-danger:  255 92 122;
+  --color-warning: 255 181 71;
+}
+
+/* ── Tema: Ocean ─────────────────────────────────────── */
+[data-theme="ocean"] {
+  --color-bg:      10 22 40;
+  --color-bg2:     14 30 54;
+  --color-bg3:     20 40 70;
+  --color-border:  30 58 95;
+  --color-accent:  0 196 210;
+  --color-accent2: 0 150 180;
+  --color-success: 46 204 138;
+  --color-danger:  255 92 122;
+  --color-warning: 255 181 71;
+}
+
+/* ── Tema: Emerald ───────────────────────────────────── */
+[data-theme="emerald"] {
+  --color-bg:      10 24 15;
+  --color-bg2:     14 34 22;
+  --color-bg3:     20 45 30;
+  --color-border:  28 70 42;
+  --color-accent:  46 204 138;
+  --color-accent2: 0 180 100;
+  --color-success: 46 204 138;
+  --color-danger:  255 92 122;
+  --color-warning: 255 181 71;
+}
+
+/* ── Tema: Crimson ───────────────────────────────────── */
+[data-theme="crimson"] {
+  --color-bg:      24 10 12;
+  --color-bg2:     34 14 18;
+  --color-bg3:     45 18 24;
+  --color-border:  80 28 38;
+  --color-accent:  255 92 122;
+  --color-accent2: 220 60 90;
+  --color-success: 46 204 138;
+  --color-danger:  255 92 122;
+  --color-warning: 255 181 71;
+}
+
 @layer base {
   body {
     @apply bg-bg text-white;
@@ -38,10 +103,10 @@
   .badge {
     @apply inline-block px-2 py-0.5 rounded-full text-xs font-medium;
   }
-  .badge-green  { @apply badge bg-green-900/40 text-success; }
-  .badge-red    { @apply badge bg-red-900/40 text-danger; }
-  .badge-amber  { @apply badge bg-amber-900/40 text-warning; }
-  .badge-blue   { @apply badge bg-blue-900/40 text-accent; }
+  .badge-green  { @apply badge bg-success/20 text-success; }
+  .badge-red    { @apply badge bg-danger/20 text-danger; }
+  .badge-amber  { @apply badge bg-warning/20 text-warning; }
+  .badge-blue   { @apply badge bg-accent/20 text-accent; }
   .th { @apply text-left text-xs text-gray-500 font-medium px-3 py-2 border-b border-border; }
   .td { @apply px-3 py-3 text-sm border-b border-border; }
   tr:last-child .td { @apply border-b-0; }
@@ -51,4 +116,4 @@
 /* Scrollbar customizada */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a3050; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--color-border)); border-radius: 99px; }
