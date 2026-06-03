@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fmtMoeda } from '../utils/formatters'
 
 const API = import.meta.env.VITE_API_URL || '/api/v1'
@@ -7,15 +7,25 @@ export default function CatalogoPublico() {
   const [produtos, setProdutos]   = useState([])
   const [loading, setLoading]     = useState(true)
   const [busca, setBusca]         = useState('')
-  const [ordem, setOrdem]         = useState('nome') // nome | preco_asc | preco_desc
+  const [ordem, setOrdem]         = useState('nome')
   const [soDisponiveis, setSoDisponiveis] = useState(false)
   const [entidade, setEntidade]   = useState('Print3D')
+
+  // Produto destacado via QR (?produto=id)
+  const produtoIdDestaque = new URLSearchParams(window.location.search).get('produto')
+  const destaqueRef = useRef(null)
 
   useEffect(() => {
     fetch(`${API}/produtos`)
       .then(r => r.json())
       .then(data => { setProdutos(data); setLoading(false) })
       .catch(() => setLoading(false))
+
+
+    // Scroll para o produto destacado quando carregado
+    if (produtoIdDestaque && destaqueRef.current) {
+      setTimeout(() => destaqueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+    }
 
     // Carrega nome da entidade via endpoint público
     fetch(`${API}/configuracoes/publico`)
@@ -73,8 +83,14 @@ export default function CatalogoPublico() {
           <p className="text-center text-gray-600 py-12 text-sm">Nenhum produto encontrado.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtrados.map(p => (
-              <div key={p.id} className="card p-0 overflow-hidden">
+            {filtrados.map(p => {
+              const isDestaque = String(p.id) === String(produtoIdDestaque)
+              return (
+              <div key={p.id}
+                ref={isDestaque ? destaqueRef : null}
+                className={`card p-0 overflow-hidden transition-all ${
+                  isDestaque ? 'ring-2 ring-accent scale-[1.02]' : ''
+                }`}>
                 {/* Foto */}
                 <div className="h-44 bg-bg3 relative overflow-hidden">
                   {p.fotoUrl
@@ -105,7 +121,8 @@ export default function CatalogoPublico() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

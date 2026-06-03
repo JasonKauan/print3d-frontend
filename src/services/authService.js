@@ -6,6 +6,7 @@ export const authService = {
     const { data } = await api.post('/auth/login', { email, senha })
     localStorage.setItem('token', data.token)
     localStorage.setItem('usuario', JSON.stringify({
+      id: data.id,
       email: data.email,
       nome: data.nome,
       role: data.role,

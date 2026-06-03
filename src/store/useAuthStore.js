@@ -8,7 +8,7 @@ const useAuthStore = create((set) => ({
   login: async (email, senha) => {
     const data = await authService.login(email, senha)
     set({
-      usuario: { email: data.email, nome: data.nome, role: data.role },
+      usuario: { id: data.id, email: data.email, nome: data.nome, role: data.role },
       token: data.token,
     })
     return data

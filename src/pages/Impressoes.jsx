@@ -9,7 +9,7 @@ export default function Impressoes() {
   const isAdmin = usuario?.role === 'ADMIN' || usuario?.role === 'DEV'
 
   const { data: impressoes, loading } = useFetch(() =>
-    isAdmin ? impressaoService.listar() : impressaoService.listarMembro()
+    isAdmin ? impressaoService.listar() : impressaoService.listarMembro(usuario?.id)
   )
 
   return (
